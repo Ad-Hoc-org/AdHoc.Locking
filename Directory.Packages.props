@@ -1,0 +1,16 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup Label="Fody">
+    <PackageVersion Include="ConfigureAwait.Fody" Version="[3.3.2,]" />
+    <PackageVersion Include="Fody" Version="[6.8.1,]" />
+  </ItemGroup>
+
+  <ItemGroup Label="SourceLinkProperties">
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="1.1.1" />
+  </ItemGroup>
+
+</Project>
