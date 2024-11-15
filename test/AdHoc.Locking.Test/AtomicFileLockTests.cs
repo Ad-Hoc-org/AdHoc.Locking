@@ -61,7 +61,7 @@ public class AtomicFileLockTests
     public async Task TestTryAcquireAsync()
     {
         CancellationToken cancellationToken = CancellationToken.None;
-        var atomic = new AtomicFileLock(_LockName, TimeSpan.FromMilliseconds(1000));
+        var atomic = new AtomicFileLock(_LockName, TimeSpan.FromSeconds(10));
 
         using var myLock = atomic.Create();
         (await myLock.TryAcquireAsync(cancellationToken)).Should().BeTrue();
@@ -69,7 +69,7 @@ public class AtomicFileLockTests
         using var otherLock = atomic.Create();
         (await otherLock.TryAcquireAsync(cancellationToken)).Should().BeFalse();
 
-        var newAtomic = new AtomicFileLock(_LockName, TimeSpan.FromMilliseconds(500));
+        var newAtomic = new AtomicFileLock(_LockName, TimeSpan.FromSeconds(5));
         using var myNewLock = newAtomic.Create(myLock.Owner);
         (await myNewLock.TryAcquireAsync(cancellationToken)).Should().BeTrue();
 

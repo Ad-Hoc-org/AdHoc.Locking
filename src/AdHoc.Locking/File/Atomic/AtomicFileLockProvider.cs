@@ -10,6 +10,7 @@ public sealed class AtomicFileLockProvider
 
 
     private const int _DefaultExpiryIntervalKey = 0;
+    private static readonly TimeSpan _DefaultExpiryInterval = TimeSpan.FromMinutes(5);
 
 
     public string LocksDirectory { get; }
@@ -34,7 +35,7 @@ public sealed class AtomicFileLockProvider
             {
                 if (!_expiryIntervals.TryGetValue(name, out TimeSpan expiryInterval))
                     if (!_expiryIntervals.TryGetValue(_DefaultExpiryIntervalKey, out expiryInterval))
-                        expiryInterval = TimeSpan.FromMinutes(1);
+                        expiryInterval = _DefaultExpiryInterval;
                 return new(name, expiryInterval);
             }
         });
