@@ -69,7 +69,6 @@ jobs:
 
     - name: Test
       id: tests
-      continue-on-error: true # proceed if tests fail to allow for the report generation in master or next step failure in PR
       run: |
         find . -name "*.csproj" | xargs -I {} dotnet test "{}" \
           --framework ${{ matrix.framework }} \
