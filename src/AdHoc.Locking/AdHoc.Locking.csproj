@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Version>0.1.0-alpha</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="AdHoc.Locking.Abstraction" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\AdHoc.Locking.Abstraction\AdHoc.Locking.Abstraction.csproj" />
+  </ItemGroup>
+
+</Project>

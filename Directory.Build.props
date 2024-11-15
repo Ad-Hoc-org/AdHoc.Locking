@@ -1,11 +1,11 @@
 <Project>
 
   <PropertyGroup>
-    <RepoRoot>$([System.IO.Directory]::GetParent($(MSBuildThisFileDirectory)).Parent.FullName)</RepoRoot>
+    <RepoRoot>$([System.IO.Path]::GetFullPath($(MSBuildThisFileDirectory)))</RepoRoot>
   </PropertyGroup>
 
   <PropertyGroup>
-    <TargetFramework>net9;net8</TargetFramework>
+    <TargetFrameworks>net9.0;net8.0</TargetFrameworks>
     <LangVersion>preview</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -16,7 +16,7 @@
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/Ad-Hoc-org/.dotnet</RepositoryUrl>
     <PackageTags>AdHoc</PackageTags>
-    <PackageIcon>icon.png</PackageIcon>
+    <!-- <PackageIcon>icon-512.png</PackageIcon> -->
     <Authors>AdHoc Authors</Authors>
     <Company>AdHoc</Company>
     <Copyright>Copyright AdHoc Authors</Copyright>
@@ -24,13 +24,16 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <PackagePrimaryLicenseFile>$(RepoRoot)\LICENSE</PackagePrimaryLicenseFile>
-    <PackageThirdPartyNoticesFile>$(RepoRoot)\THIRD-PARTY-NOTICES.TXT</PackageThirdPartyNoticesFile>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageChangelogFile>CHANGELOG.md</PackageChangelogFile>
-    <PackageReleaseNotesFile>$(RepoRoot)\RELEASENOTES.md</PackageReleaseNotesFile>
+    <!-- <PackagePrimaryLicenseFile>$(RepoRoot)LICENSE</PackagePrimaryLicenseFile> -->
+    <!-- <PackageThirdPartyNoticesFile>$(RepoRoot)THIRD-PARTY-NOTICES.TXT</PackageThirdPartyNoticesFile> -->
+    <!-- <PackageReadmeFile>README.md</PackageReadmeFile> -->
+    <!-- <PackageChangelogFile>CHANGELOG.md</PackageChangelogFile> -->
+    <!-- <PackageReleaseNotesFile>$(RepoRoot)RELEASENOTES.md</PackageReleaseNotesFile> -->
   </PropertyGroup>
-
+  <ItemGroup>
+	<!-- <None Include="$(RepoRoot)icon-512.png" Pack="true" PackagePath="\" /> -->
+  </ItemGroup>
+  
   <!-- Enable sourcelink https://docs.microsoft.com/dotnet/standard/library-guidance/sourcelink -->
   <PropertyGroup Label="SourceLinkProperties">
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -42,7 +45,7 @@
 
   <PropertyGroup>
     <SignAssembly>true</SignAssembly>
-    <AssemblyOriginatorKeyFile>$(RepoRoot)sign.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>$(RepoRoot)/sign.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
