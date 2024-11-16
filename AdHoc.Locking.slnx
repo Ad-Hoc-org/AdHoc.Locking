@@ -15,13 +15,8 @@
   <Project Path="src\AdHoc.Locking.Abstraction\AdHoc.Locking.Abstraction.csproj" />
   <Project Path="src\AdHoc.Locking.Extensions.DependencyInjection\AdHoc.Locking.Extensions.DependencyInjection.csproj" />
   <Project Path="src\AdHoc.Locking\AdHoc.Locking.csproj" />
-  <Project Path="test\AdHoc.Locking.Test\AdHoc.Locking.Test.csproj" />
   <Folder Name="/test/">
-    <Project Path="..\..\..\..\..\..\..\..\AdHoc\AdHoc.Locking\test\AdHoc.Locking.AtomicFileLock\AdHoc.Locking.AtomicFileLock.csproj" />
-    <Project Path="..\..\..\..\..\..\..\..\AdHoc\AdHoc.Locking\test\AdHoc.Locking.Test\AdHoc.Locking.Test.csproj" />
+	<Project Path="test\AdHoc.Locking.Test\AdHoc.Locking.Test.csproj" />
     <Project Path="test\AdHoc.Locking.AtomicFileLock\AdHoc.Locking.AtomicFileLock.csproj" />
   </Folder>
-  <Project Path="..\..\..\..\..\..\..\..\AdHoc\AdHoc.Locking\src\AdHoc.Locking.Abstraction\AdHoc.Locking.Abstraction.csproj" />
-  <Project Path="..\..\..\..\..\..\..\..\AdHoc\AdHoc.Locking\src\AdHoc.Locking.Extensions.DependencyInjection\AdHoc.Locking.Extensions.DependencyInjection.csproj" />
-  <Project Path="..\..\..\..\..\..\..\..\AdHoc\AdHoc.Locking\src\AdHoc.Locking\AdHoc.Locking.csproj" />
 </Solution>
