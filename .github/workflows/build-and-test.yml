@@ -6,6 +6,8 @@ on:
       - main
       - releases/*
   create:
+    branches:
+      - releases/*
     tags:
       - releases/*
     

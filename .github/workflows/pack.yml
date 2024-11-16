@@ -5,6 +5,8 @@ on:
     branches:
       - releases/*
   create:
+    branches:
+      - releases/*
     tags:
       - releases/*
 
@@ -19,8 +21,8 @@ jobs:
         run: |
           BRANCH_NAME="${GITHUB_REF#refs/heads/}"
           if [[ "$BRANCH_NAME" =~ releases/([^/]+)/(.+) ]]; then
-            echo "Package=${BASH_REMATCH[1]}" >> $GITHUB_ENV
-            echo "Version=${BASH_REMATCH[2]}" >> $GITHUB_ENV
+            echo "PACKAGE=${BASH_REMATCH[1]}" >> $GITHUB_ENV
+            echo "VERSION=${BASH_REMATCH[2]}" >> $GITHUB_ENV
           else
             echo "Branch name does not match the required pattern 'releases/{Package}/{Version}'"
             exit 1
