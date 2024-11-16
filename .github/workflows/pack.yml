@@ -38,7 +38,7 @@ jobs:
 
       - name: Validate package version
         run: |
-          PACKAGE_FILE=$(find ./nupkgs -name '$PACKAGE.$VERSION.nupkg' | head -n 1)
+          PACKAGE_FILE=$(find ./nupkgs -name "$PACKAGE.$VERSION.nupkg" | head -n 1)
           if [ -z "$PACKAGE_FILE" ]; then
             echo "No NuGet package '$PACKAGE.$VERSION.nupkg' found."
             echo "Maybe the package or version doesn't match the expected '$PACKAGE' with version '$VERSION'."
