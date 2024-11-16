@@ -34,11 +34,12 @@ jobs:
           dotnet-version: '9.0.x'
 
       - name: Pack the project
-        run: find -type f -name "${PACKAGE}.csproj" | xargs -I {} dotnet pack "{}" --configuration Release --output ./nupkgs
+        run: find -type f -name "$PACKAGE.csproj" | xargs -I {} dotnet pack "{}" --configuration Release --output ./nupkgs
 
       - name: Validate package version
         run: |
-          PACKAGE_FILE=$(find ./nupkgs -name '${PACKAGE}.nupkg' | head -n 1)
+          echo $PACKAGE
+          PACKAGE_FILE=$(find ./nupkgs -name '$PACKAGE.nupkg' | head -n 1)
           NUPKG_VERSION=$(dotnet nuget list source --format short | grep -oP 'Version=\K[^;]+')
 
           echo "Expected Version: $VERSION"
