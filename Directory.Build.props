@@ -13,9 +13,10 @@
   </PropertyGroup>
 
   <PropertyGroup Label="PackageProperties">
+    <Description>Handles internal and distributed locks for efficient resource synchronization.</Description>
+    <PackageTags>AdHoc;lock;locking;distributed;semaphore</PackageTags>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/Ad-Hoc-org/AdHoc.Locking</RepositoryUrl>
-    <PackageTags>AdHoc</PackageTags>
     <PackageIcon>icon-512.png</PackageIcon>
     <Authors>AdHoc Authors</Authors>
     <Company>AdHoc</Company>
@@ -24,14 +25,15 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <!-- <PackagePrimaryLicenseFile>$(RepoRoot)LICENSE</PackagePrimaryLicenseFile> -->
+    <PackagePrimaryLicenseFile>$(RepoRoot)LICENSE</PackagePrimaryLicenseFile>
     <!-- <PackageThirdPartyNoticesFile>$(RepoRoot)THIRD-PARTY-NOTICES.TXT</PackageThirdPartyNoticesFile> -->
     <!-- <PackageReadmeFile>README.md</PackageReadmeFile> -->
     <!-- <PackageChangelogFile>CHANGELOG.md</PackageChangelogFile> -->
     <!-- <PackageReleaseNotesFile>$(RepoRoot)RELEASENOTES.md</PackageReleaseNotesFile> -->
   </PropertyGroup>
   <ItemGroup>
-     <None Include="$(RepoRoot)icon-512.png" Pack="true" PackagePath="\" /> 
+    <!--<PackageMarkdownFiles Include="README.md" />-->
+    <None Include="$(RepoRoot)icon-512.png" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <!-- Enable sourcelink https://docs.microsoft.com/dotnet/standard/library-guidance/sourcelink -->
