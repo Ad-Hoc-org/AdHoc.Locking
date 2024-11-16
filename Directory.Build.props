@@ -31,7 +31,7 @@
     <!-- <PackageReleaseNotesFile>$(RepoRoot)RELEASENOTES.md</PackageReleaseNotesFile> -->
   </PropertyGroup>
   <ItemGroup>
-    <!-- <None Include="$(RepoRoot)icon-512.png" Pack="true" PackagePath="\" /> -->
+     <None Include="$(RepoRoot)icon-512.png" Pack="true" PackagePath="\" /> 
   </ItemGroup>
 
   <!-- Enable sourcelink https://docs.microsoft.com/dotnet/standard/library-guidance/sourcelink -->
