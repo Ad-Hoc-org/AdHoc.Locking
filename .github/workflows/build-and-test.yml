@@ -38,6 +38,7 @@ jobs:
 
   test:
     name: Test ${{ matrix.display-name }}
+    needs: build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
