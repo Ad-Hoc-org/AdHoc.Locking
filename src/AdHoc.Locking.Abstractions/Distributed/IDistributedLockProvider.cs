@@ -3,7 +3,7 @@
 
 using System.ComponentModel;
 
-namespace AdHoc.Locking.Abstraction;
+namespace AdHoc.Locking.Abstractions;
 public interface IDistributedLockProvider
     : ILockProvider
 {

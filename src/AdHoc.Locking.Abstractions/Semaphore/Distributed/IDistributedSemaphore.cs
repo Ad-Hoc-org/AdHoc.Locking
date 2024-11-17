@@ -1,7 +1,7 @@
 // Copyright AdHoc Authors
 // SPDX-License-Identifier: MIT
 
-namespace AdHoc.Locking.Abstraction;
+namespace AdHoc.Locking.Abstractions;
 public interface IDistributedSemaphore
     : ISemaphore,
         IDistributedLock<IDistributedSemaphoreLocking>

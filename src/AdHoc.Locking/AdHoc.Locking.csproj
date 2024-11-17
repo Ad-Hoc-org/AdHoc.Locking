@@ -5,11 +5,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Using Include="AdHoc.Locking.Abstraction" />
+    <Using Include="AdHoc.Locking.Abstractions" />
   </ItemGroup>
   
   <ItemGroup>
-    <ProjectReference Include="..\AdHoc.Locking.Abstraction\AdHoc.Locking.Abstraction.csproj" />
+    <ProjectReference Include="..\AdHoc.Locking.Abstractions\AdHoc.Locking.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

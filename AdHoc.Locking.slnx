@@ -1,7 +1,4 @@
 <Solution>
-  <Properties Name="Visual Studio">
-    <Property Name="OpenWith" Value="17" />
-  </Properties>
   <Folder Name="/.Settings/">
     <File Path=".editorconfig" />
     <File Path=".gitignore" />
@@ -12,7 +9,7 @@
     <File Path="NuGet.config" />
     <File Path=".gitattributes" />
   </Folder>
-  <Project Path="src\AdHoc.Locking.Abstraction\AdHoc.Locking.Abstraction.csproj" />
+  <Project Path="src/AdHoc.Locking.Abstractions/AdHoc.Locking.Abstractions.csproj" Id="44e20f8b-5e6b-4b12-b8e6-cff2d2b8b7dd" />
   <Project Path="src\AdHoc.Locking.Extensions.DependencyInjection\AdHoc.Locking.Extensions.DependencyInjection.csproj" />
   <Project Path="src\AdHoc.Locking\AdHoc.Locking.csproj" />
   <Folder Name="/test/">

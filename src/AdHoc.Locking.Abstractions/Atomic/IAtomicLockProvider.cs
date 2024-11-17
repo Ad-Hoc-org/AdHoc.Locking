@@ -1,3 +1,3 @@
-namespace AdHoc.Locking.Abstraction;
+namespace AdHoc.Locking.Abstractions;
 public interface IAtomicLockProvider
     : ILockProvider<IAtomicLock>;

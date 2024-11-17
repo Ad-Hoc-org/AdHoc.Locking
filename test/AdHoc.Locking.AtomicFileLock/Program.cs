@@ -1,6 +1,6 @@
 // See https://aka.ms/new-console-template for more information
 using AdHoc.Locking;
-using AdHoc.Locking.Abstraction;
+using AdHoc.Locking.Abstractions;
 
 try
 {

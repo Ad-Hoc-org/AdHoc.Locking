@@ -19,7 +19,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\AdHoc.Locking.Abstraction\AdHoc.Locking.Abstraction.csproj" />
     <ProjectReference Include="..\..\src\AdHoc.Locking.Extensions.DependencyInjection\AdHoc.Locking.Extensions.DependencyInjection.csproj" />
     <ProjectReference Include="..\..\src\AdHoc.Locking\AdHoc.Locking.csproj" />
   </ItemGroup>

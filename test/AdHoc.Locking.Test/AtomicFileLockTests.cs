@@ -1,4 +1,4 @@
-using AdHoc.Locking.Abstraction;
+using AdHoc.Locking.Abstractions;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using FluentAssertions;
