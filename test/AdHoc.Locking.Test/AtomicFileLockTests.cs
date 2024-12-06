@@ -74,7 +74,7 @@ public class AtomicFileLockTests
         (await myNewLock.TryAcquireAsync(cancellationToken)).Should().BeTrue();
 
         (await otherLock.TryAcquireAsync(cancellationToken)).Should().BeFalse();
-        await Task.Delay(newAtomic.ExpiryInterval * 1.25, cancellationToken); // await expiration
+        await Task.Delay(newAtomic.TimeToLive * 1.25, cancellationToken); // await expiration
 
         (await otherLock.TryAcquireAsync(cancellationToken)).Should().BeTrue();
         (await myNewLock.TryAcquireAsync(cancellationToken)).Should().BeFalse();

@@ -37,7 +37,7 @@ public sealed class SemaphoreProvider
     }
 
 
-    public void SetSemaphore(string? name, int count)
+    public void SetSemaphoreCount(string? name, int count)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(count, 1);
         lock (_counts)

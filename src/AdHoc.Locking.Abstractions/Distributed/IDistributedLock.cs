@@ -7,6 +7,8 @@ namespace AdHoc.Locking.Abstractions;
 public interface IDistributedLock
     : ILock
 {
+    public TimeSpan TimeToLive { get; set; }
+
     IDistributedLocking Create(string owner);
 }
 

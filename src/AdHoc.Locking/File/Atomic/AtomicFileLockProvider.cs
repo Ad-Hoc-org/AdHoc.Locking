@@ -9,46 +9,45 @@ public sealed class AtomicFileLockProvider
 {
 
 
-    private const int _DefaultExpiryIntervalKey = 0;
-    private static readonly TimeSpan _DefaultExpiryInterval = TimeSpan.FromMinutes(5);
+    private const int _DefaultTimeToLiveKey = 0;
 
 
     public string LocksDirectory { get; }
 
 
     private readonly ConcurrentDictionary<string, AtomicFileLock> _atomics;
-    private readonly ConcurrentDictionary<object, TimeSpan> _expiryIntervals;
+    private readonly Dictionary<object, TimeSpan> _timeToLives;
 
 
     public AtomicFileLockProvider(string locksDirectory)
     {
         LocksDirectory = Path.GetFullPath(locksDirectory);
         _atomics = new();
-        _expiryIntervals = new();
+        _timeToLives = [];
     }
 
 
     public IDistributedAtomicLock GetLock(string name) =>
         _atomics.GetOrAdd(name, name =>
         {
-            lock (_expiryIntervals)
+            lock (_timeToLives)
             {
-                if (!_expiryIntervals.TryGetValue(name, out TimeSpan expiryInterval))
-                    if (!_expiryIntervals.TryGetValue(_DefaultExpiryIntervalKey, out expiryInterval))
-                        expiryInterval = _DefaultExpiryInterval;
-                return new(name, expiryInterval);
+                if (!_timeToLives.TryGetValue(name, out TimeSpan timeToLive))
+                    if (!_timeToLives.TryGetValue(_DefaultTimeToLiveKey, out timeToLive))
+                        timeToLive = LockFiles._DefaultTimeToLive;
+                return new(name, timeToLive);
             }
         });
 
 
-    public void SetExpiryInterval(string? name, TimeSpan expiryInterval)
+    public void SetTimeToLive(string? name, TimeSpan timeToLive)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(expiryInterval, TimeSpan.Zero);
-        lock (_expiryIntervals)
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(timeToLive, TimeSpan.Zero);
+        lock (_timeToLives)
         {
-            _expiryIntervals[name is null ? _DefaultExpiryIntervalKey : name] = expiryInterval;
+            _timeToLives[name is null ? _DefaultTimeToLiveKey : name] = timeToLive;
             if (name is not null && _atomics.TryGetValue(name, out AtomicFileLock? atomic))
-                atomic.ExpiryInterval = expiryInterval;
+                atomic.TimeToLive = timeToLive;
         }
     }
 

@@ -13,7 +13,7 @@ public interface IDistributedLockProvider
         GetLock(name);
 
 
-    void SetExpiryInterval(string? name, TimeSpan expiryInterval);
+    void SetTimeToLive(string? name, TimeSpan timeToLive);
 }
 
 

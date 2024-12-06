@@ -1,9 +1,9 @@
-﻿namespace AdHoc.Locking.Abstractions;
+namespace AdHoc.Locking.Abstractions;
 public static partial class Locks
 {
 
 
-    public static ILocking Acquire(
+    public static ISemaphoreLocking Acquire(
         this ISemaphore factory,
         int requiredCount
     )
