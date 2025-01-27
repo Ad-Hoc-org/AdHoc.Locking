@@ -3,14 +3,9 @@ using System.ComponentModel;
 namespace AdHoc.Locking.Abstractions;
 public interface ILock
 {
-
-
     string Name { get; }
 
-
     ILocking Create();
-
-
 }
 
 

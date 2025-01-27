@@ -9,33 +9,33 @@ public interface IDistributedLocking
 
     public string Owner { get; }
 
-    public TimeSpan ExpiryInterval { get; }
+    public TimeSpan TimeToLive { get; }
 
 
 
     bool TryAcquire(TimeSpan expiresIn, CancellationToken cancellationToken = default);
 
     bool ILocking.TryAcquire(CancellationToken cancellationToken) =>
-        TryAcquire(ExpiryInterval, cancellationToken);
+        TryAcquire(TimeToLive, cancellationToken);
 
 
     ValueTask<bool> TryAcquireAsync(TimeSpan expiresIn, CancellationToken cancellationToken);
 
     ValueTask<bool> ILocking.TryAcquireAsync(CancellationToken cancellationToken) =>
-        TryAcquireAsync(ExpiryInterval, cancellationToken);
+        TryAcquireAsync(TimeToLive, cancellationToken);
 
 
 
     void Acquire(TimeSpan expiresIn, CancellationToken cancellationToken = default);
 
     void ILocking.Acquire(CancellationToken cancellationToken) =>
-        Acquire(ExpiryInterval, cancellationToken);
+        Acquire(TimeToLive, cancellationToken);
 
 
     ValueTask AcquireAsync(TimeSpan expiresIn, CancellationToken cancellationToken);
 
     ValueTask ILocking.AcquireAsync(CancellationToken cancellationToken) =>
-        AcquireAsync(ExpiryInterval, cancellationToken);
+        AcquireAsync(TimeToLive, cancellationToken);
 
 
 }

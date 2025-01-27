@@ -63,22 +63,22 @@ public class AtomicFileLockTests
         CancellationToken cancellationToken = CancellationToken.None;
         var atomic = new AtomicFileLock(_LockName, TimeSpan.FromSeconds(10));
 
-        using var myLock = atomic.Create();
-        (await myLock.TryAcquireAsync(cancellationToken)).Should().BeTrue();
+        using var locking = atomic.Create("myOwner");
+        (await locking.TryAcquireAsync(cancellationToken)).Should().BeTrue();
 
-        using var otherLock = atomic.Create();
-        (await otherLock.TryAcquireAsync(cancellationToken)).Should().BeFalse();
+        using var otherLocking = atomic.Create();
+        (await otherLocking.TryAcquireAsync(cancellationToken)).Should().BeFalse();
 
         var newAtomic = new AtomicFileLock(_LockName, TimeSpan.FromSeconds(5));
-        using var myNewLock = newAtomic.Create(myLock.Owner);
-        (await myNewLock.TryAcquireAsync(cancellationToken)).Should().BeTrue();
+        using var newOwnedLocking = newAtomic.Create(locking.Owner);
+        (await newOwnedLocking.TryAcquireAsync(cancellationToken)).Should().BeTrue();
 
-        (await otherLock.TryAcquireAsync(cancellationToken)).Should().BeFalse();
-        await Task.Delay(newAtomic.ExpiryInterval * 1.25, cancellationToken); // await expiration
+        (await otherLocking.TryAcquireAsync(cancellationToken)).Should().BeFalse();
+        await Task.Delay(locking.TimeToLive * 1.25, cancellationToken); // await expiration
 
-        (await otherLock.TryAcquireAsync(cancellationToken)).Should().BeTrue();
-        (await myNewLock.TryAcquireAsync(cancellationToken)).Should().BeFalse();
-        (await myLock.TryAcquireAsync(cancellationToken)).Should().BeFalse();
+        (await otherLocking.TryAcquireAsync(cancellationToken)).Should().BeTrue();
+        (await newOwnedLocking.TryAcquireAsync(cancellationToken)).Should().BeFalse();
+        (await locking.TryAcquireAsync(cancellationToken)).Should().BeFalse();
     }
 
 

@@ -10,7 +10,6 @@
     <File Path=".gitattributes" />
   </Folder>
   <Project Path="src/AdHoc.Locking.Abstractions/AdHoc.Locking.Abstractions.csproj" Id="44e20f8b-5e6b-4b12-b8e6-cff2d2b8b7dd" />
-  <Project Path="src\AdHoc.Locking.Extensions.DependencyInjection\AdHoc.Locking.Extensions.DependencyInjection.csproj" />
   <Project Path="src\AdHoc.Locking\AdHoc.Locking.csproj" />
   <Folder Name="/test/">
 	<Project Path="test\AdHoc.Locking.Test\AdHoc.Locking.Test.csproj" />

@@ -36,6 +36,9 @@ public sealed class AtomicLock
 
         public bool IsAcquired { get; private set; }
 
+        public ValueTask<bool> IsAcquiredAsync(CancellationToken cancellationToken) =>
+            ValueTask.FromResult(IsAcquired);
+
 
         private readonly AtomicLock _atomic;
 
