@@ -10,7 +10,6 @@ namespace System.Threading;
 internal sealed class Lock
 {
 
-
     private readonly object _lock;
 
     public Lock() =>
@@ -31,6 +30,7 @@ internal sealed class Lock
         public readonly void Dispose() =>
             Monitor.Exit(@lock._lock);
     }
+
 }
 #pragma warning restore CS9216 // A value of type 'System.Threading.Lock' converted to a different type will use likely unintended monitor-based locking in 'lock' statement.
 #endif

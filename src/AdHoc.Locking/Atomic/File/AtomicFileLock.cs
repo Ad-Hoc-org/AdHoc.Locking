@@ -4,59 +4,66 @@
 
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using static AdHoc.Locking.FileLocks;
 
 namespace AdHoc.Locking;
 public sealed partial class AtomicFileLock
-    : IDistributedAtomicLock
+    : IAtomicLock,
+        IDistributedLock
 {
-
 
     public string Name { get; }
 
     public string LockPath { get; }
 
 
-    private TimeSpan _expiryInterval;
-    public TimeSpan ExpiryInterval
-    {
-        get => _expiryInterval;
-        set
-        {
-            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value, TimeSpan.Zero);
-            _expiryInterval = value;
-        }
-    }
+    private readonly Func<string, TimeSpan> _timeToLive;
 
 
-    public AtomicFileLock(string lockPath, TimeSpan expiryInterval)
+    public AtomicFileLock(string lockPath, TimeSpan timeToLive)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(lockPath);
+        ArgumentOutOfRangeException.ThrowIfLessThan(timeToLive, TimeSpan.Zero);
+
         LockPath = Path.GetFullPath(lockPath);
         Name = Path.GetFileName(lockPath);
-        ExpiryInterval = expiryInterval;
+        _timeToLive = _ => timeToLive;
+    }
+
+    internal AtomicFileLock(string lockPath, string name, Func<string, TimeSpan> timeToLive)
+    {
+        LockPath = Path.GetFullPath(lockPath);
+        Name = name;
+        _timeToLive = timeToLive;
     }
 
 
-    public IDistributedAtomicLocking Create(string owner) =>
-        new Locking(this, owner);
+    public IAtomicLocking Create() =>
+        CreateLocking(Guid.NewGuid().ToString());
 
-    public IDistributedAtomicLocking Create() =>
-        Create(Guid.NewGuid().ToString());
+    public IDistributedLocking Create(string owner) =>
+        CreateLocking(owner);
+
+    private Locking CreateLocking(string owner)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(owner);
+        ThrowIfContainsInvalidFileNameChars(owner);
+        return new(this, owner);
+    }
+
+
 
     private sealed class Locking
-        : IDistributedAtomicLocking
+        : IAtomicLocking,
+            IDistributedLocking
     {
 
-
-        private const int _OpenInterval = 10;
-        private const int _MinAcquiringInterval = 100;
-        private const int _MaxAcquiringInterval = 1000;
 
         public string Owner { get; }
 
 
-        public TimeSpan ExpiryInterval =>
-            _atomic.ExpiryInterval;
+        public TimeSpan TimeToLive =>
+            _atomic._timeToLive(_atomic.Name);
 
         public string LockName =>
             _atomic.Name;
@@ -148,7 +155,7 @@ public sealed partial class AtomicFileLock
                 {
                     if (Directory.Exists(path))
                         throw new InvalidDataException($"'{path}' is a directory and can't be used as a lock file.");
-                    await Task.Delay(_OpenInterval, cancellationToken);
+                    await Task.Delay(OpenInterval, cancellationToken);
                 }
             }
         }
@@ -213,10 +220,10 @@ public sealed partial class AtomicFileLock
                 }
 
                 await Task.Delay(
-                    Math.Min(_MaxAcquiringInterval,
+                    Math.Min(MaxAcquiringInterval,
                         Math.Max(
                             (int)(info.AcquiredUntil - DateTime.UtcNow).TotalMilliseconds,
-                            _MinAcquiringInterval
+                            MinAcquiringInterval
                         )
                     ), cancellationToken
                 );

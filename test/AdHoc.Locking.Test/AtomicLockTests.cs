@@ -11,129 +11,129 @@ public class AtomicLockTests
 
 
     [Fact]
-    public void TestFactorySingleton()
+    public void TestProviderSingleton()
     {
         var provider = new AtomicLockProvider();
-        var factory = provider.GetLock(_LockName);
-        factory.Should().NotBeNull();
-        factory.Should().BeSameAs(provider.GetLock(_LockName));
-        factory.Should().NotBeSameAs(provider.GetLock(_OtherLockName));
+        var myLock = provider.GetAtomic(_LockName);
+        myLock.Should().NotBeNull();
+        myLock.Should().BeSameAs(provider.GetAtomic(_LockName));
+        myLock.Should().NotBeSameAs(provider.GetAtomic(_OtherLockName));
     }
 
 
     [Fact]
     public void TestTryAcquire()
     {
-        var factory = new AtomicLock(_LockName);
+        var myLock = new AtomicLock(_LockName);
 
-        using var myLock = factory.Create();
-        myLock.TryAcquire().Should().BeTrue();
-        myLock.TryAcquire().Should().BeTrue();
+        using var locking = myLock.Create();
+        locking.TryAcquire().Should().BeTrue();
+        locking.TryAcquire().Should().BeTrue();
 
-        using var otherLock = factory.Create();
-        otherLock.TryAcquire().Should().BeFalse();
+        using var otherLocking = myLock.Create();
+        otherLocking.TryAcquire().Should().BeFalse();
 
-        myLock.Release();
-        otherLock.TryAcquire().Should().BeTrue();
-        myLock.TryAcquire().Should().BeFalse();
+        locking.Release();
+        otherLocking.TryAcquire().Should().BeTrue();
+        locking.TryAcquire().Should().BeFalse();
     }
 
 
     [Fact]
     public async Task TestAcquire()
     {
-        var factory = new AtomicLock(_LockName);
+        var myLock = new AtomicLock(_LockName);
 
-        await using var myLock = factory.Create();
-        myLock.IsAcquired.Should().BeFalse();
-        await myLock.AcquireAsync(default);
-        myLock.IsAcquired.Should().BeTrue();
+        await using var locking = myLock.Create();
+        locking.IsAcquired.Should().BeFalse();
+        await locking.AcquireAsync(default);
+        locking.IsAcquired.Should().BeTrue();
 
         // timeout only if doesn't work - faster tests
-        await myLock.Invoking(async l => await l.AcquireAsync(default))
+        await locking.Invoking(async l => await l.AcquireAsync(default))
             .Should().CompleteWithinAsync(TimeSpan.FromSeconds(1));
 
-        await using var otherLock = factory.Create();
+        await using var otherLocking = myLock.Create();
         var otherAcquire = Task.Run(async () =>
         {
-            myLock.IsAcquired.Should().BeTrue();
-            await otherLock.AcquireAsync(default);
-            myLock.IsAcquired.Should().BeFalse();
-            otherLock.IsAcquired.Should().BeTrue();
+            locking.IsAcquired.Should().BeTrue();
+            await otherLocking.AcquireAsync(default);
+            locking.IsAcquired.Should().BeFalse();
+            otherLocking.IsAcquired.Should().BeTrue();
         });
 
-        otherLock.IsAcquired.Should().BeFalse();
+        otherLocking.IsAcquired.Should().BeFalse();
         await Task.Delay(500); // wait for otherLock to arquire
-        await myLock.ReleaseAsync();
+        await locking.ReleaseAsync();
         await otherAcquire;
-        otherLock.IsAcquired.Should().BeTrue();
+        otherLocking.IsAcquired.Should().BeTrue();
     }
 
 
     [Fact]
     public void TestRelease()
     {
-        var factory = new AtomicLock(_LockName);
+        var myLock = new AtomicLock(_LockName);
 
-        using var myLock = factory.Create();
-        myLock.IsAcquired.Should().BeFalse();
-        myLock.Release(); // shouldn't throw
-        myLock.IsAcquired.Should().BeFalse();
+        using var locking = myLock.Create();
+        locking.IsAcquired.Should().BeFalse();
+        locking.Release(); // shouldn't throw
+        locking.IsAcquired.Should().BeFalse();
 
-        myLock.Acquire();
-        myLock.IsAcquired.Should().BeTrue();
+        locking.Acquire();
+        locking.IsAcquired.Should().BeTrue();
 
-        myLock.Release();
-        myLock.IsAcquired.Should().BeFalse();
+        locking.Release();
+        locking.IsAcquired.Should().BeFalse();
     }
 
 
     [Fact]
     public async Task TestCancelWhileAcquiring()
     {
-        var factory = new AtomicLock(_LockName);
+        var myLock = new AtomicLock(_LockName);
 
-        using var myLock = factory.Create();
-        await myLock.AcquireAsync(default);
+        using var locking = myLock.Create();
+        await locking.AcquireAsync(default);
 
-        using var otherLock = factory.Create();
+        using var otherLocking = myLock.Create();
         CancellationTokenSource cancelSource = new();
-        var acquire = otherLock.AcquireAsync(cancelSource.Token);
+        var acquire = otherLocking.AcquireAsync(cancelSource.Token);
         await Task.Delay(500); // wait for blocking
 
-        otherLock.IsAcquired.Should().BeFalse();
+        otherLocking.IsAcquired.Should().BeFalse();
         await cancelSource.CancelAsync();
         acquire.IsCanceled.Should().BeTrue();
 
-        await myLock.ReleaseAsync();
+        await locking.ReleaseAsync();
         await Task.Delay(500); // wait maybe it wasn't canceled and acquired lock
-        otherLock.IsAcquired.Should().BeFalse();
+        otherLocking.IsAcquired.Should().BeFalse();
     }
 
 
     [Fact]
     public async Task TestNoDeadLock()
     {
-        var factory = new AtomicLock(_LockName);
+        var myLock = new AtomicLock(_LockName);
 
-        await using var myLock = factory.Create();
-        await myLock.AcquireAsync(default);
+        await using var locking = myLock.Create();
+        await locking.AcquireAsync(default);
 
         {
-            await using var otherLock = factory.Create();
-            var task = otherLock.AcquireAsync(CancellationToken.None);
+            await using var otherLocking = myLock.Create();
+            var task = otherLocking.AcquireAsync(CancellationToken.None);
             await Task.Delay(500);
-            await otherLock.ReleaseAsync();
+            await otherLocking.ReleaseAsync();
             await task.Invoking(async task => await task).Should().ThrowAsync<SynchronizationLockException>();
         }
 
         {
-            await using var otherLock = factory.Create();
-            var task = otherLock.AcquireAsync(CancellationToken.None);
+            await using var otherLocking = myLock.Create();
+            var task = otherLocking.AcquireAsync(CancellationToken.None);
             await Task.Delay(500);
             await Task.WhenAll(
-                Task.Run(async () => await myLock.ReleaseAsync()),
-                Task.Run(async () => await otherLock.ReleaseAsync())
+                Task.Run(async () => await locking.ReleaseAsync()),
+                Task.Run(async () => await otherLocking.ReleaseAsync())
             );
             try
             {
