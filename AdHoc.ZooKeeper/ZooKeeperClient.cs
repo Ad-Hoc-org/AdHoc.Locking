@@ -15,56 +15,69 @@ public class ZooKeeperClient
     private sealed record Authentication(ReadOnlyMemory<byte> Scheme, ReadOnlyMemory<byte> Data);
 
 
-    private TcpClient? _tcpClient;
-
-    private CancellationTokenSource _disposeSource;
-
-    private Task _receiveTask;
-    private int _previousConnection;
-    private readonly ConcurrentDictionary<int, TaskCompletionSource<byte[]>> _pendingRequests;
-
     private readonly string _host;
     private readonly int _port;
 
     private byte[]? _sessionID;
+    public string? SessionID => _sessionID is null ? null
+        : BitConverter.ToString(_sessionID ?? []).Replace("-", "").ToLower();
+
     private byte[]? _sessionPassword;
 
     private const int SessionTimeout = 30000; // 30 seconds
     private const bool ReadOnly = false;
 
-    private readonly SemaphoreSlim _lock = new(1, 1);
+
+    private TcpClient? _tcpClient;
+    private readonly SemaphoreSlim _connectionLock = new(1, 1);
+
+
+
+    private int _previousRequest;
+    private Task _receiveTask;
+    private readonly ConcurrentDictionary<int, TaskCompletionSource<IZooKeeperResponse>> _pendingRequests;
+    private readonly CancellationTokenSource _disposeSource;
+
 
     public ZooKeeperClient(string host, int port)
     {
         _host = host;
         _port = port;
-        _pendingRequests = new ConcurrentDictionary<int, TaskCompletionSource<byte[]>>();
+        _pendingRequests = new();
         _receiveTask = Task.CompletedTask;
-        _disposeSource = new CancellationTokenSource();
+        _disposeSource = new();
     }
 
 
-    public async Task<IZooKeeperResponse> SendAsync(Memory<byte> request, CancellationToken cancellationToken)
+    private async Task ReceiveResponsesAsync(NetworkStream stream, CancellationToken cancellationToken)
     {
-        SetConnection(request.Span, ref _previousConnection);
+        await Task.Yield();
 
-        var stream = await EnsureSessionAsync(cancellationToken);
+        await Task.Delay(5000);
 
-        await _lock.WaitAsync(cancellationToken);
+        IMemoryOwner<byte>? bufferOwner = null;
+        Memory<byte> buffer;
         try
         {
-            BitConverter.TryWriteBytes(request.Span.Slice(LengthSize), BinaryPrimitives.ReverseEndianness(++_previousConnection));
-            await stream.WriteAsync(request, cancellationToken);
-            await stream.FlushAsync(cancellationToken);
-
-            var bufferOwner = MemoryPool<byte>.Shared.Rent(LengthSize);
-            try
+            while (!_pendingRequests.IsEmpty)
             {
-                var buffer = bufferOwner.Memory;
+                cancellationToken.ThrowIfCancellationRequested();
+
+                bufferOwner = MemoryPool<byte>.Shared.Rent(MinimalResponseLength);
+                buffer = bufferOwner.Memory;
                 if (await stream.ReadAsync(buffer.Slice(0, LengthSize), cancellationToken) != LengthSize)
-                    throw new ZooKeeperException($"Invalid ZooKeeper response!");
+                {
+                    await DisconnectWithAsync(new ZooKeeperException($"Invalid ZooKeeper response!"), cancellationToken);
+                    return;
+                }
 
                 var responseLength = BinaryPrimitives.ReadInt32BigEndian(buffer.Span.Slice(0, LengthSize));
+                if (responseLength < MinimalResponseLength)
+                {
+                    await DisconnectWithAsync(new ZooKeeperException($"Invalid ZooKeeper response!"), cancellationToken);
+                    return;
+                }
+
                 if (responseLength > buffer.Length)
                 {
                     bufferOwner.Dispose();
@@ -73,32 +86,129 @@ public class ZooKeeperClient
 
                 var response = buffer.Slice(0, responseLength);
                 if (await stream.ReadAsync(response, cancellationToken) != responseLength)
-                    throw new ZooKeeperException($"Invalid ZooKeeper response!");
+                {
+                    await DisconnectWithAsync(new ZooKeeperException($"Invalid ZooKeeper response!"), cancellationToken);
+                    return;
+                }
 
-                return new Response(bufferOwner, response);
+                var requestID = BinaryPrimitives.ReadInt32BigEndian(buffer.Span);
+                if (_pendingRequests.TryRemove(requestID, out var request))
+                {
+                    if (!request.TrySetResult(new Response(bufferOwner, response)))
+                        bufferOwner.Dispose();
+                    bufferOwner = null;
+                }
             }
-            catch
-            {
-                bufferOwner.Dispose();
-                throw;
-            }
+        }
+        catch (IOException ex) when (!stream.Socket.Connected)
+        {
+            await DisconnectWithAsync(new TimeoutException($"Session '0x{SessionID}' has timed out", ex), cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            await DisconnectWithAsync(ex, cancellationToken);
         }
         finally
         {
-            _lock.Release();
+            bufferOwner?.Dispose();
         }
     }
 
-    private async Task<Stream> EnsureSessionAsync(CancellationToken cancellationToken)
+    private async Task DisconnectWithAsync(Exception exception, CancellationToken cancellationToken)
+    {
+        await _connectionLock.WaitAsync(cancellationToken);
+        try
+        {
+            _tcpClient?.Close();
+            while (!_pendingRequests.IsEmpty)
+                if (_pendingRequests.TryRemove(_pendingRequests.Keys.First(), out var request))
+                    request.TrySetException(exception);
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
+    }
+
+
+    public async Task<IZooKeeperResponse> SendAsync(Memory<byte> request, CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(_disposeSource.Token.IsCancellationRequested, this);
+
+        var taskSource = new TaskCompletionSource<IZooKeeperResponse>();
+        int connection;
+        do
+        {
+            connection = SetConnection(request.Span, ref _previousRequest);
+            if (connection == PingConnectionID && _pendingRequests.TryGetValue(connection, out var ping))
+#pragma warning disable VSTHRD003 // Avoid awaiting foreign Tasks
+                return await Task.Run(async () => await ping.Task, cancellationToken);
+#pragma warning restore VSTHRD003 // Avoid awaiting foreign Tasks
+        } while (!_pendingRequests.TryAdd(connection, taskSource));
+
+        NetworkStream? stream = null;
+        try
+        {
+            stream = await EnsureSessionAsync(cancellationToken);
+
+            BitConverter.TryWriteBytes(request.Span.Slice(LengthSize), BinaryPrimitives.ReverseEndianness(++_previousRequest));
+            await stream.WriteAsync(request, cancellationToken);
+            await stream.FlushAsync(cancellationToken);
+
+            Task receiveTask;
+            while (!taskSource.Task.IsCompleted)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                receiveTask = _receiveTask;
+                if (receiveTask.IsCompleted)
+                {
+                    ObjectDisposedException.ThrowIf(receiveTask.IsCanceled, true);
+                    _receiveTask = receiveTask = ReceiveResponsesAsync(stream, _disposeSource.Token);
+                }
+
+                await Task.WhenAny(receiveTask, taskSource.Task);
+            }
+
+            return await taskSource.Task;
+        }
+        catch (Exception innerException)
+        {
+            if (innerException is TaskCanceledException canceledException && canceledException.CancellationToken == cancellationToken)
+            {
+                if (_pendingRequests.TryRemove(KeyValuePair.Create(connection, taskSource)))
+                    taskSource.TrySetCanceled(cancellationToken);
+                throw;
+            }
+
+            Exception exception = innerException;
+            if (innerException is IOException && stream is not null && !stream.Socket.Connected)
+                exception = new TimeoutException($"Session '0x{SessionID}' has timed out", innerException);
+
+            if (_pendingRequests.TryRemove(KeyValuePair.Create(connection, taskSource)))
+                taskSource.TrySetException(innerException);
+            if (exception == innerException)
+                throw; // keep stack trace
+            else
+                throw exception;
+        }
+    }
+
+    private async Task<NetworkStream> EnsureSessionAsync(CancellationToken cancellationToken)
     {
         if (_tcpClient is not null && _tcpClient.Connected)
             return _tcpClient.GetStream();
 
-        await _lock.WaitAsync(cancellationToken);
+        await _connectionLock.WaitAsync(cancellationToken);
         try
         {
             if (_tcpClient is not null && _tcpClient.Connected)
                 return _tcpClient.GetStream();
+
+#pragma warning disable VSTHRD003 // Avoid awaiting foreign Tasks
+            // clean up lost requests before reconnecting
+            await _receiveTask; // 
+#pragma warning restore VSTHRD003 // Avoid awaiting foreign Tasks
 
             _tcpClient ??= new TcpClient();
             await _tcpClient.ConnectAsync(_host, _port)
@@ -128,7 +238,7 @@ public class ZooKeeperClient
                 if (await stream.ReadAsync(buffer.Slice(0, responseLength), cancellationToken) != responseLength)
                     throw new ZooKeeperException($"Invalid ZooKeeper response!");
 
-                _sessionID = buffer.Span.Slice(8, SessionSize).ToArray();
+                _sessionID = buffer.Span.Slice(8, SessionIDSize).ToArray();
                 _sessionPassword = new byte[BinaryPrimitives.ReadInt32BigEndian(buffer.Span.Slice(16, LengthSize))];
                 buffer.Slice(20, _sessionPassword.Length).CopyTo(_sessionPassword);
 
@@ -141,7 +251,7 @@ public class ZooKeeperClient
         }
         finally
         {
-            _lock.Release();
+            _connectionLock.Release();
         }
     }
 
@@ -174,15 +284,12 @@ public class ZooKeeperClient
 
     public async ValueTask DisposeAsync()
     {
-        if (_disposeSource != null)
-        {
-            await _disposeSource.CancelAsync();
-            var receiveTask = _receiveTask;
-            if (receiveTask is not null)
-                await receiveTask;
-            _tcpClient?.Dispose();
-            _disposeSource.Dispose();
-        }
+        await _disposeSource.CancelAsync();
+        var receiveTask = _receiveTask;
+        if (receiveTask is not null)
+            try { await receiveTask; } catch { }
+        _tcpClient?.Dispose();
+        _disposeSource.Dispose();
     }
 
     private sealed class Response

@@ -28,9 +28,13 @@ using AdHoc.ZooKeeper;
 
 CancellationToken cancellationToken = default;
 await using var client = new ZooKeeperClient("localhost", 2181);
-await client.PingAsync(cancellationToken);
-await client.PingAsync(cancellationToken);
-await client.PingAsync(cancellationToken);
+await Task.WhenAll(
+    client.PingAsync(cancellationToken),
+    client.PingAsync(cancellationToken),
+    client.PingAsync(cancellationToken)
+);
+
+
 
 Console.WriteLine("done");
 //await client.PingAsync(cancellation);
