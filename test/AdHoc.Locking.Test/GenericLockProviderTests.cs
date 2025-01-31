@@ -19,7 +19,7 @@ public class GenericLockProviderTests
     public void TestConfigured()
     {
         new GenericLockProvider()
-            .Add(_ => true, name => new AtomicLock(name))
+            .Add<IAtomicLock>(name => new AtomicLock(name))
             .GetLock<ILock>("atomic")
             .Should().BeOfType(typeof(AtomicLock));
     }

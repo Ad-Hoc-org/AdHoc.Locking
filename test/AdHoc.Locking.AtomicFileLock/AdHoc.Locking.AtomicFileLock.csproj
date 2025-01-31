@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\AdHoc.ZooKeeper\AdHoc.ZooKeeper.csproj" />
     <ProjectReference Include="..\..\src\AdHoc.Locking\AdHoc.Locking.csproj" />
   </ItemGroup>
 

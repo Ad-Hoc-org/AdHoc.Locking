@@ -1,3 +1,6 @@
+// Copyright AdHoc Authors
+// SPDX-License-Identifier: MIT
+
 using System.ComponentModel;
 
 namespace AdHoc.Locking.Abstractions;

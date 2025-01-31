@@ -26,7 +26,6 @@ public class GenericLockProvider
         return Add((type, name) => predicate(type, name) ? factory(type, name) : null);
     }
 
-
     public GenericLockProvider Add<TLock>(
         Func<string, bool> predicate,
         Func<string, TLock> factory
@@ -36,6 +35,15 @@ public class GenericLockProvider
         ArgumentNullException.ThrowIfNull(predicate);
         ArgumentNullException.ThrowIfNull(factory);
         return Add((type, name) => typeof(TLock).IsAssignableTo(type) && predicate(name) ? factory(name) : null);
+    }
+
+    public GenericLockProvider Add<TLock>(
+        Func<string, TLock> factory
+    )
+        where TLock : ILock
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        return Add((type, name) => typeof(TLock).IsAssignableTo(type) ? factory(name) : null);
     }
 
 

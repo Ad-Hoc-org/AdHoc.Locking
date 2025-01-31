@@ -1,3 +1,6 @@
+// Copyright AdHoc Authors
+// SPDX-License-Identifier: MIT
+
 namespace AdHoc.Locking.Abstractions;
 
 public interface IGenericLockProvider

@@ -9,10 +9,12 @@
     <File Path="NuGet.config" />
     <File Path=".gitattributes" />
   </Folder>
-  <Project Path="src/AdHoc.Locking.Abstractions/AdHoc.Locking.Abstractions.csproj" Id="44e20f8b-5e6b-4b12-b8e6-cff2d2b8b7dd" />
-  <Project Path="src\AdHoc.Locking\AdHoc.Locking.csproj" />
   <Folder Name="/test/">
-	<Project Path="test\AdHoc.Locking.Test\AdHoc.Locking.Test.csproj" />
     <Project Path="test\AdHoc.Locking.AtomicFileLock\AdHoc.Locking.AtomicFileLock.csproj" />
+    <Project Path="test\AdHoc.Locking.Test\AdHoc.Locking.Test.csproj" />
   </Folder>
+  <Project Path="AdHoc.ZooKeeper/AdHoc.ZooKeeper.csproj" Id="7b94064c-65ef-4944-9fa2-c3a5a41e5df1" />
+  <Project Path="src/AdHoc.Locking.Abstractions/AdHoc.Locking.Abstractions.csproj" Id="44e20f8b-5e6b-4b12-b8e6-cff2d2b8b7dd" />
+  <Project Path="src/AdHoc.Locking.ZooKeeper/AdHoc.Locking.ZooKeeper.csproj" Id="23f8610d-e396-49dc-8bca-c4dc3eb8f8a7" />
+  <Project Path="src\AdHoc.Locking\AdHoc.Locking.csproj" />
 </Solution>

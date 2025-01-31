@@ -1,13 +1,17 @@
+// Copyright AdHoc Authors
+// SPDX-License-Identifier: MIT
+
 namespace AdHoc.Locking.Abstractions;
 public static partial class Locks
 {
 
     public static ILocking Acquire(
-        this ILock @lock
+        this ILock @lock,
+        CancellationToken cancellationToken = default
     )
     {
         ILocking locking = @lock.Create();
-        locking.Acquire();
+        locking.Acquire(cancellationToken);
         return locking;
     }
 
