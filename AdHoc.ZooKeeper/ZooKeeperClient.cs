@@ -4,15 +4,15 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
+using System.IO.Pipelines;
 using System.Net.Sockets;
-using static AdHoc.ZooKeeper.Requests;
-using static AdHoc.ZooKeeper.Responses;
+using AdHoc.ZooKeeper.Abstractions;
+using static AdHoc.ZooKeeper.Operations;
 
 namespace AdHoc.ZooKeeper;
 public class ZooKeeperClient
-    : IAsyncDisposable
+    : IZooKeeper
 {
-    private sealed record Authentication(ReadOnlyMemory<byte> Scheme, ReadOnlyMemory<byte> Data);
 
 
     private readonly string _host;
@@ -152,6 +152,7 @@ public class ZooKeeperClient
             stream = await EnsureSessionAsync(cancellationToken);
 
             BitConverter.TryWriteBytes(request.Span.Slice(LengthSize), BinaryPrimitives.ReverseEndianness(++_previousRequest));
+            new PipeWriter(stream).Write(request.Span);
             await stream.WriteAsync(request, cancellationToken);
             await stream.FlushAsync(cancellationToken);
 
@@ -253,32 +254,6 @@ public class ZooKeeperClient
         {
             _connectionLock.Release();
         }
-    }
-
-
-    public async Task PingAsync(CancellationToken cancellationToken)
-    {
-        using var pingOwner = MemoryPool<byte>.Shared.Rent(PingSize);
-        var ping = pingOwner.Memory;
-        CreatePing(ping.Span);
-        using var response = await SendAsync(ping.Slice(0, PingSize), cancellationToken);
-
-        int xid = BinaryPrimitives.ReadInt32BigEndian(response.Memory.Span);
-        Console.WriteLine("xid: ");
-        Console.WriteLine(xid);
-        Console.WriteLine(xid.ToString("x"));
-
-        long zxid = BinaryPrimitives.ReadInt64BigEndian(response.Memory.Span.Slice(4));
-        Console.WriteLine("zxid: ");
-        Console.WriteLine(zxid);
-        Console.WriteLine(zxid.ToString("x"));
-
-        int error = BinaryPrimitives.ReadInt32BigEndian(response.Memory.Span.Slice(12));
-        Console.WriteLine("error: ");
-        Console.WriteLine(error);
-        Console.WriteLine(error.ToString("x"));
-
-        // TODO Throw on error
     }
 
 

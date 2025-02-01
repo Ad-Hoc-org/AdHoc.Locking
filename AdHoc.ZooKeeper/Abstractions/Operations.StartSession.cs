@@ -2,10 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 using System.Buffers.Binary;
-using static AdHoc.ZooKeeper.Responses;
 
 namespace AdHoc.ZooKeeper;
-public static partial class Requests
+public static partial class Operations
 {
     public const int ProtocolVersionSize = 4;
     public const int TimeoutSize = 4;

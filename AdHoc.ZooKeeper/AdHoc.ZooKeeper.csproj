@@ -7,8 +7,5 @@
   <ItemGroup>
     <PackageReference Include="System.IO.Pipelines" />
   </ItemGroup>
-  <ItemGroup>
-    <!--<PackageReference Include="ZooKeeperNetEx" />-->
-  </ItemGroup>
 
 </Project>

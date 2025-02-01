@@ -4,13 +4,19 @@
 using System.Buffers.Binary;
 
 namespace AdHoc.ZooKeeper;
-public static partial class Requests
+public static partial class Operations
 {
     public const int LengthSize = 4;
     public const int RequestIDSize = 4;
+    public const int ConnectionIDSize = 8;
     public const int OperationSize = 4;
     public const int SessionIDSize = 8;
 
+    public const int ErrorSize = 4;
+    public const int MinimalResponseLength = RequestIDSize + ConnectionIDSize + ErrorSize;
+
+    public const int DefaultPasswordSize = 16;
+    public const int DefaultSessionResponseSize = LengthSize + RequestIDSize + TimeoutSize + SessionIDSize + LengthSize + DefaultPasswordSize + ReadOnlySize;
 
     public static void Validate(ReadOnlySpan<byte> request)
     {

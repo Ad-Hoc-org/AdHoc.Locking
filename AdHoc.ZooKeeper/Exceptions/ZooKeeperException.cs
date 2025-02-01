@@ -5,9 +5,16 @@ namespace AdHoc.ZooKeeper;
 
 [Serializable]
 public class ZooKeeperException
-    : IOException
+    : Exception
 {
     public ZooKeeperException() { }
-    public ZooKeeperException(string message) : base(message) { }
-    public ZooKeeperException(string message, Exception inner) : base(message, inner) { }
+    public ZooKeeperException(string? message) : base(message) { }
+    public ZooKeeperException(string? message, Exception? inner) : base(message, inner) { }
+
+
+    public static TimeoutException CreateTimeout(string? session, Exception? innerException = null) =>
+        new($"Session '0x{session}' has timed out", innerException)
+        {
+            SessionID = session
+        };
 }
