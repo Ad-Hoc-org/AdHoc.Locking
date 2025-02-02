@@ -4,8 +4,7 @@
 namespace AdHoc.ZooKeeper;
 
 [Serializable]
-public class TimeoutException
-    : ConnectionException
+public class TimeoutException : ConnectionException
 {
     public string? SessionID { get; init; }
 

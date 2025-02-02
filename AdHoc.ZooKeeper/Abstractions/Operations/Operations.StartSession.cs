@@ -8,8 +8,12 @@ public static partial class Operations
 {
     public const int ProtocolVersionSize = 4;
     public const int TimeoutSize = 4;
+    public const int SessionIDSize = 8;
     public const int ReadOnlySize = 1;
     public const int StartSessionSize = LengthSize + ProtocolVersionSize + ConnectionIDSize + TimeoutSize + SessionIDSize + LengthSize + ReadOnlySize;
+
+    public const int DefaultPasswordSize = 16;
+    public const int DefaultSessionResponseSize = LengthSize + RequestIDSize + TimeoutSize + SessionIDSize + LengthSize + DefaultPasswordSize + ReadOnlySize;
 
     public static void CreateStartSession(Span<byte> buffer, int timeout, bool readOnly)
     {

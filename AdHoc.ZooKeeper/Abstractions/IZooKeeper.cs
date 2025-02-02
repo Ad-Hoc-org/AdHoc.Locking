@@ -5,5 +5,6 @@ namespace AdHoc.ZooKeeper.Abstractions;
 public interface IZooKeeper
     : IAsyncDisposable
 {
-    public Task<IZooKeeperResponse> SendAsync(Memory<byte> request, CancellationToken cancellationToken);
+    public Task<TResult> ExecuteAsync<TResult>(IZooKeeperOperation<TResult> operation, CancellationToken cancellationToken);
+    //public Task<IZooKeeperResponse> SendAsync(Memory<byte> request, CancellationToken cancellationToken);
 }

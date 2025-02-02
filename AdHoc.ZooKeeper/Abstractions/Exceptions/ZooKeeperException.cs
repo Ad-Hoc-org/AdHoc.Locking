@@ -13,8 +13,11 @@ public class ZooKeeperException
 
 
     public static TimeoutException CreateTimeout(string? session, Exception? innerException = null) =>
-        new($"Session '0x{session}' has timed out", innerException)
+        new($"Session '0x{session}' has timed out.", innerException)
         {
             SessionID = session
         };
+
+    public static InvalidRequestException CreateInvalidRequestSize(int length, int size) =>
+        new InvalidRequestException($"Request length is {length} but {size} was written.");
 }

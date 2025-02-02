@@ -4,8 +4,7 @@
 namespace AdHoc.ZooKeeper;
 
 [Serializable]
-public class ConnectionException
-    : ZooKeeperException
+public class ConnectionException : ZooKeeperException
 {
     public ConnectionException() { }
     public ConnectionException(string? message) : base(message) { }
