@@ -1,10 +1,11 @@
 // Copyright AdHoc Authors
 // SPDX-License-Identifier: MIT
 
+using System.Buffers;
 using System.Buffers.Binary;
 using AdHoc.ZooKeeper.Abstractions;
 
-namespace AdHoc.ZooKeeper;
+namespace AdHoc.ZooKeeper.Abstractions;
 public static partial class Operations
 {
     public const int LengthSize = 4;
@@ -24,10 +25,10 @@ public static partial class Operations
         ArgumentOutOfRangeException.ThrowIfNotEqual(length, request.Length - LengthSize);
     }
 
-    public static int GetRequestID(OperationCode operation, ref int previousRequest)
+    public static int GetRequestID(ZooKeeperOperation operation, ref int previousRequest)
     {
-        if (operation == OperationCode.Ping)
-            return Ping.RequestID;
+        if (operation == ZooKeeperOperation.Ping)
+            return PingOperation.RequestID;
 
         int oldValue, newValue;
         do
@@ -38,5 +39,30 @@ public static partial class Operations
                 newValue = 1;
         } while (Interlocked.CompareExchange(ref previousRequest, newValue, oldValue) != oldValue);
         return newValue;
+    }
+
+
+    internal static int Write(Span<byte> destination, int value)
+    {
+        BinaryPrimitives.WriteInt32BigEndian(destination, value);
+        return 4;
+    }
+    internal static int Write(Span<byte> destination, long value)
+    {
+        BinaryPrimitives.WriteInt64BigEndian(destination, value);
+        return 8;
+    }
+
+    internal static void Write(IBufferWriter<byte> writer, int value)
+    {
+        var buffer = writer.GetSpan(4);
+        BinaryPrimitives.WriteInt32BigEndian(buffer, value);
+        writer.Advance(LengthSize);
+    }
+    internal static void Write(IBufferWriter<byte> writer, long value)
+    {
+        var buffer = writer.GetSpan(8);
+        BinaryPrimitives.WriteInt64BigEndian(buffer, value);
+        writer.Advance(LengthSize);
     }
 }

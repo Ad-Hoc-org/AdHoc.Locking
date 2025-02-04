@@ -2,11 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 using System.Buffers;
-using AdHoc.ZooKeeper.Abstractions;
 
-namespace AdHoc.ZooKeeper;
-public sealed class Ping
-    : IZooKeeperOperation<ErrorCode>
+namespace AdHoc.ZooKeeper.Abstractions;
+public sealed class PingOperation
+    : IZooKeeperOperation<ZooKeeperError>
 {
     public const int RequestID = -2;
 
@@ -21,22 +20,22 @@ public sealed class Ping
     internal static ReadOnlyMemory<byte> _Operation => _Header.Slice(8, 4);
 
 
-    internal Ping() { }
+    internal PingOperation() { }
 
 
-    public void WriteRequest(IBufferWriter<byte> writer, Action<IBufferWriter<byte>, OperationCode> writeRequestID) =>
-        writer.Write(_Header.Span);
+    public void WriteRequest(in ZooKeeperContext context) =>
+        context.Writer.Write(_Header.Span);
 
-    public ErrorCode ReadResponse(ZooKeeperResponse response) =>
+    public ZooKeeperError ReadResponse(in ZooKeeperResponse response) =>
         response.Error;
 
 }
 
 public static partial class Operations
 {
-    public static Ping Ping { get; } = new Ping();
+    public static PingOperation Ping { get; } = new PingOperation();
 
-    public static Task<ErrorCode> PingAsync(
+    public static Task<ZooKeeperError> PingAsync(
         this IZooKeeper zooKeeper,
         CancellationToken cancellationToken
     ) =>

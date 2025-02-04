@@ -3,7 +3,8 @@
 
 using System.Buffers;
 using System.Buffers.Binary;
-using static AdHoc.ZooKeeper.Operations;
+using AdHoc.ZooKeeper.Abstractions;
+using static AdHoc.ZooKeeper.Abstractions.Operations;
 
 namespace AdHoc.ZooKeeper;
 internal class SafeRequestWriter
@@ -19,11 +20,8 @@ internal class SafeRequestWriter
     public bool IsPing { get; private set; }
 
 
-    internal SafeRequestWriter(IBufferWriter<byte> writer)
-    {
-        _writer = writer;
-        this.Write(GetSpan(4));
-    }
+    internal SafeRequestWriter(IBufferWriter<byte> writer) => _writer = writer;
+
 
     public void Advance(int count)
     {
@@ -34,17 +32,17 @@ internal class SafeRequestWriter
             if (Size < RequestHeaderSize)
                 return;
 
-            var header = GetSpan(RequestHeaderSize);
+            var header = _writer.GetSpan(RequestHeaderSize);
             Length = BinaryPrimitives.ReadInt32BigEndian(header);
-            if (Size >= Length)
+            if (Size > Length + LengthSize)
                 throw ZooKeeperException.CreateInvalidRequestSize(Length, Size);
 
             if (Length == RequestHeaderSize
-                && header.Slice(LengthSize + RequestIDSize).SequenceEqual(Ping._Operation.Span)
+                && header.Slice(LengthSize + RequestIDSize).SequenceEqual(PingOperation._Operation.Span)
             )
             {
                 IsPing = true;
-                RequestID = Ping.RequestID;
+                RequestID = PingOperation.RequestID;
                 return; // don't flush ping
             }
 
@@ -53,7 +51,7 @@ internal class SafeRequestWriter
             return;
         }
 
-        if (Size >= Length)
+        if (Size > Length + LengthSize)
             throw ZooKeeperException.CreateInvalidRequestSize(Length, Size);
         _writer.Advance(count);
     }
@@ -61,14 +59,14 @@ internal class SafeRequestWriter
     public Memory<byte> GetMemory(int sizeHint = 0)
     {
         if (Length == -1)
-            return GetMemory(sizeHint + Size).Slice(Size);
+            return _writer.GetMemory(sizeHint + Size).Slice(Size);
         return _writer.GetMemory(sizeHint);
     }
 
     public Span<byte> GetSpan(int sizeHint = 0)
     {
         if (Length == -1)
-            return GetSpan(sizeHint + Size).Slice(Size);
+            return _writer.GetSpan(sizeHint + Size).Slice(Size);
         return _writer.GetSpan(sizeHint);
     }
 

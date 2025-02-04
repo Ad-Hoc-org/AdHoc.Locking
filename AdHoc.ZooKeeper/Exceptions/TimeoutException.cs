@@ -1,7 +1,7 @@
 // Copyright AdHoc Authors
 // SPDX-License-Identifier: MIT
 
-namespace AdHoc.ZooKeeper;
+namespace AdHoc.ZooKeeper.Abstractions;
 
 [Serializable]
 public class TimeoutException : ConnectionException

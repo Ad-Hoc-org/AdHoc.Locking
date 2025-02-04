@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 namespace AdHoc.ZooKeeper.Abstractions;
-public enum OperationCode
+public enum ZooKeeperOperation
     : int
 {
     Authentication = 100,

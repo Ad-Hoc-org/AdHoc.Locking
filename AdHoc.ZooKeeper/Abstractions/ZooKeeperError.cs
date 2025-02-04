@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 namespace AdHoc.ZooKeeper.Abstractions;
-public enum ErrorCode
+public enum ZooKeeperError
     : int
 {
     Ok = 0,

@@ -1,5 +1,6 @@
 // See https://aka.ms/new-console-template for more information
 using AdHoc.ZooKeeper;
+using AdHoc.ZooKeeper.Abstractions;
 
 //try
 //{
@@ -28,11 +29,8 @@ using AdHoc.ZooKeeper;
 
 CancellationToken cancellationToken = default;
 await using var client = new ZooKeeperClient("localhost", 2181);
-await Task.WhenAll(
-    client.PingAsync(cancellationToken),
-    client.PingAsync(cancellationToken),
-    client.PingAsync(cancellationToken)
-);
+Console.WriteLine(await client.CreateAsync("foo", cancellationToken));
+Console.WriteLine(await client.CreateEphemeralAsync("ephemeral", cancellationToken));
 
 
 

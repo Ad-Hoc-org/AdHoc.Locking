@@ -1,7 +1,7 @@
 // Copyright AdHoc Authors
 // SPDX-License-Identifier: MIT
 
-namespace AdHoc.ZooKeeper;
+namespace AdHoc.ZooKeeper.Abstractions;
 
 [Serializable]
 public class ZooKeeperException
@@ -19,5 +19,8 @@ public class ZooKeeperException
         };
 
     public static InvalidRequestException CreateInvalidRequestSize(int length, int size) =>
-        new InvalidRequestException($"Request length is {length} but {size} was written.");
+        new($"Request length is {length} but {size} was written.");
+
+    public static ResponseException CreateResponseError(ZooKeeperError error) =>
+        new(error, $"Response indicate an error: {error}");
 }

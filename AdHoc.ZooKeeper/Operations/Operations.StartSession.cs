@@ -3,7 +3,7 @@
 
 using System.Buffers.Binary;
 
-namespace AdHoc.ZooKeeper;
+namespace AdHoc.ZooKeeper.Abstractions;
 public static partial class Operations
 {
     public const int ProtocolVersionSize = 4;

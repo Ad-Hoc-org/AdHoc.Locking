@@ -9,7 +9,7 @@ using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Runtime.ExceptionServices;
 using AdHoc.ZooKeeper.Abstractions;
-using static AdHoc.ZooKeeper.Operations;
+using static AdHoc.ZooKeeper.Abstractions.Operations;
 
 namespace AdHoc.ZooKeeper;
 public class ZooKeeperClient
@@ -33,7 +33,7 @@ public class ZooKeeperClient
     private TcpClient? _tcpClient;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
-
+    private readonly ZooKeeperPath Root = ZooKeeperPath.Root;
 
     private int _previousRequest;
     private Task _receiveTask;
@@ -69,25 +69,30 @@ public class ZooKeeperClient
     )
     {
         bool wrote;
-        if (operation is not Ping)
+        if (operation is not PingOperation)
         {
             (var result, wrote) = await WriteAsync(stream, async (stream, pending, cancellationToken) =>
             {
-                var writer = new SafeRequestWriter(PipeWriter.Create(stream));
-                operation.WriteRequest(
+                var pipeWriter = PipeWriter.Create(stream);
+                var writer = new SafeRequestWriter(pipeWriter);
+                bool hasRequest = false;
+                operation.WriteRequest(new(
                     writer,
-                    (writer, operation) =>
+                    (operation) =>
                     {
-                        int connection;
+                        int request;
                         do
                         {
-                            connection = GetRequestID(operation, ref _previousRequest);
-                            if (connection == Ping.RequestID)
+                            request = GetRequestID(operation, ref _previousRequest);
+                            if (request == PingOperation.RequestID)
                                 break;
-                        } while (!_pending.TryAdd(connection, pending));
-                        writer.Write(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(connection)));
-                    }
-                );
+                        } while (!_pending.TryAdd(request, pending));
+                        hasRequest = true;
+                        return request;
+                    })
+                {
+                    Root = Root
+                });
 
                 if (writer.IsPing)
                     return null;
@@ -95,6 +100,10 @@ public class ZooKeeperClient
                 if (writer.IsCompleted)
                     throw ZooKeeperException.CreateInvalidRequestSize(writer.Length, writer.Size);
 
+                if (!hasRequest)
+                    throw new ZooKeeperException("RequestID has to be requested from context!");
+
+                await pipeWriter.FlushAsync(cancellationToken);
                 return writer.RequestID;
 
             }, operation, cancellationToken);
@@ -106,24 +115,25 @@ public class ZooKeeperClient
         Task<TResult>? ping = null;
         (var pingResult, wrote) = await WriteAsync(stream, async (stream, pending, cancellationToken) =>
         {
-            if (_receiving.TryGetValue(Ping.RequestID, out var task))
+            if (_receiving.TryGetValue(PingOperation.RequestID, out var task))
             {
-                if (operation is Ping)
+                if (operation is PingOperation)
                     ping = Task.Run(async () => await (Task<TResult>)task, cancellationToken);
                 else
                 {
-                    if (!_pending.TryGetValue(Ping.RequestID, out var response))
+                    if (!_pending.TryGetValue(PingOperation.RequestID, out var response))
                         throw new InvalidOperationException();
+#pragma warning disable VSTHRD003 // Avoid awaiting foreign Tasks
                     ping = Task.Run(async () => operation.ReadResponse(ToResponse(await response.Task)), cancellationToken);
+#pragma warning restore VSTHRD003 // Avoid awaiting foreign Tasks
                 }
                 return null;
             }
 
-            Console.WriteLine("ping");
-            _pending[Ping.RequestID] = pending;
-            await stream.WriteAsync(Ping._Header, cancellationToken);
+            _pending[PingOperation.RequestID] = pending;
+            await stream.WriteAsync(PingOperation._Header, cancellationToken);
             await stream.FlushAsync(cancellationToken);
-            return Ping.RequestID;
+            return PingOperation.RequestID;
         }, operation, cancellationToken);
         return wrote ? pingResult! : await ping!;
     }
@@ -136,55 +146,58 @@ public class ZooKeeperClient
     )
     {
         await _lock.WaitAsync(cancellationToken);
+        bool released = false;
         TaskCompletionSource<Response> pending = new();
-        int? connection = null;
+        int? request = null;
         Task<TResult>? receiveTask = null;
         try
         {
-            connection = await writeAsync(stream, pending, cancellationToken);
-            if (connection is null)
-            {
-                _lock.Release();
+            request = await writeAsync(stream, pending, cancellationToken);
+            if (request is null)
                 return (default, false);
-            }
 
             receiveTask = ReceiveAsync(pending.Task, stream, operation, cancellationToken);
-            _receiving[Ping.RequestID] = receiveTask;
+            _receiving[PingOperation.RequestID] = receiveTask;
 
-            _lock.Release(); // release lock after writing and task management is done
+            // release lock after writing and task management is done
+            _lock.Release();
+            released = true;
 
             var result = await receiveTask;
-            _receiving.TryRemove(KeyValuePair.Create<int, Task>(connection.Value, receiveTask));
-            _pending.TryRemove(KeyValuePair.Create(connection.Value, pending));
+            _receiving.TryRemove(KeyValuePair.Create<int, Task>(request.Value, receiveTask));
+            _pending.TryRemove(KeyValuePair.Create(request.Value, pending));
             return (result, true);
         }
         catch (Exception ex)
         {
-            _lock.Release();
-
             HandleException(ex, cancellationToken,
                 (cancellationToken) =>
                 {
-                    if (connection is not null)
+                    if (request is not null)
                     {
                         if (receiveTask is not null)
-                            _receiving.TryRemove(KeyValuePair.Create<int, Task>(connection.Value, receiveTask));
-                        if (_pending.TryRemove(KeyValuePair.Create(connection.Value, pending)))
+                            _receiving.TryRemove(KeyValuePair.Create<int, Task>(request.Value, receiveTask));
+                        if (_pending.TryRemove(KeyValuePair.Create(request.Value, pending)))
                             pending.TrySetCanceled(cancellationToken);
                     }
                 },
                 (exception) =>
                 {
-                    if (connection is not null)
+                    if (request is not null)
                     {
                         if (receiveTask is not null)
-                            _receiving.TryRemove(KeyValuePair.Create<int, Task>(connection.Value, receiveTask));
-                        if (_pending.TryRemove(KeyValuePair.Create(connection.Value, pending)))
+                            _receiving.TryRemove(KeyValuePair.Create<int, Task>(request.Value, receiveTask));
+                        if (_pending.TryRemove(KeyValuePair.Create(request.Value, pending)))
                             pending.TrySetException(exception);
                     }
                 }
             );
             throw;
+        }
+        finally
+        {
+            if (!released)
+                _lock.Release();
         }
     }
 
@@ -212,19 +225,21 @@ public class ZooKeeperClient
 #pragma warning restore VSTHRD003 // Avoid awaiting foreign Tasks
         }
 
+        return operation.ReadResponse(
 #pragma warning disable VSTHRD003 // Avoid awaiting foreign Tasks
-        using var response = await pending;
+            ToResponse(await pending)
 #pragma warning restore VSTHRD003 // Avoid awaiting foreign Tasks
-        return operation.ReadResponse(ToResponse(response));
+        );
     }
 
-    private static ZooKeeperResponse ToResponse(Response response)
+    private ZooKeeperResponse ToResponse(Response response)
     {
         var span = response.Memory.Span;
         return new(
+            Root,
             response.RequestID,
             connectionID: BinaryPrimitives.ReadInt64BigEndian(span.Slice(RequestIDSize)),
-            error: (ErrorCode)BinaryPrimitives.ReadInt32BigEndian(span.Slice(RequestIDSize + ConnectionIDSize)),
+            error: (ZooKeeperError)BinaryPrimitives.ReadInt32BigEndian(span.Slice(RequestIDSize + ConnectionIDSize)),
             data: span.Slice(RequestIDSize + ConnectionIDSize + ErrorSize)
         );
     }
@@ -244,7 +259,8 @@ public class ZooKeeperClient
 
                 bufferOwner = MemoryPool<byte>.Shared.Rent(MinimalResponseLength);
                 buffer = bufferOwner.Memory;
-                if (await stream.ReadAsync(buffer.Slice(0, LengthSize), cancellationToken) != LengthSize)
+                var x = await stream.ReadAsync(buffer.Slice(0, LengthSize), cancellationToken);
+                if (x != LengthSize)
                 {
                     await DisconnectWithAsync(new ZooKeeperException($"Invalid ZooKeeper response!"), cancellationToken);
                     return;
@@ -261,6 +277,7 @@ public class ZooKeeperClient
                 {
                     bufferOwner.Dispose();
                     bufferOwner = MemoryPool<byte>.Shared.Rent(responseLength);
+                    buffer = bufferOwner.Memory;
                 }
 
                 var response = buffer.Slice(0, responseLength);
@@ -280,9 +297,9 @@ public class ZooKeeperClient
                 }
             }
         }
-        catch (IOException ex) when (!stream.Socket.Connected)
+        catch (Exception ex) when (!stream.Socket.Connected)
         {
-            await DisconnectWithAsync(new TimeoutException($"Session '0x{SessionID}' has timed out", ex), cancellationToken);
+            await DisconnectWithAsync(ZooKeeperException.CreateTimeout(SessionID, ex), cancellationToken);
         }
         catch (Exception ex)
         {
@@ -395,7 +412,7 @@ public class ZooKeeperClient
 
         Exception exception = innerException;
         if (innerException is SocketException)
-            exception = new TimeoutException($"Session '0x{SessionID}' has timed out", innerException);
+            exception = ZooKeeperException.CreateTimeout(SessionID, innerException);
 
         @throw?.Invoke(exception);
         if (exception == innerException)
