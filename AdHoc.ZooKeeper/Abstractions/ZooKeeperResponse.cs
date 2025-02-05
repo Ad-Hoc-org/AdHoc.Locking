@@ -7,22 +7,22 @@ public readonly ref struct ZooKeeperResponse
 
     public ZooKeeperPath Root { get; }
 
-    public int RequestID { get; }
-    public long ConnectionID { get; }
+    public int RequestIdentifier { get; }
+    public long ConnectionIdentifier { get; }
     public ZooKeeperError Error { get; }
     public ReadOnlySpan<byte> Data { get; }
 
     public ZooKeeperResponse(
         ZooKeeperPath root,
-        int requestID,
-        long connectionID,
+        int requestIdentifier,
+        long connectionIdentifier,
         ZooKeeperError error,
         ReadOnlySpan<byte> data
     )
     {
         Root = root;
-        RequestID = requestID;
-        ConnectionID = connectionID;
+        RequestIdentifier = requestIdentifier;
+        ConnectionIdentifier = connectionIdentifier;
         Error = error;
         Data = data;
     }

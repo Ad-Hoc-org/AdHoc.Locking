@@ -12,10 +12,10 @@ public class ZooKeeperException
     public ZooKeeperException(string? message, Exception? inner) : base(message, inner) { }
 
 
-    public static TimeoutException CreateTimeout(string? session, Exception? innerException = null) =>
+    public static SessionExpiredException CreateSessionExpired(string? session, Exception? innerException = null) =>
         new($"Session '0x{session}' has timed out.", innerException)
         {
-            SessionID = session
+            Session = session
         };
 
     public static InvalidRequestException CreateInvalidRequestSize(int length, int size) =>

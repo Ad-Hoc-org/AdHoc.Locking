@@ -1,34 +1,40 @@
 // Copyright AdHoc Authors
 // SPDX-License-Identifier: MIT
 
-using System.Buffers;
 using System.Buffers.Binary;
-using AdHoc.ZooKeeper.Abstractions;
 
 namespace AdHoc.ZooKeeper.Abstractions;
 public static partial class Operations
 {
-    public const int LengthSize = 4;
-    public const int RequestIDSize = 4;
-    public const int OperationSize = 4;
-    public const int RequestHeaderSize = LengthSize + RequestIDSize + OperationSize;
+    public const int BooleanSize = 1;
+    public const int Int32Size = 4;
+    public const int Int64Size = 8;
 
+    public const int LengthSize = Int32Size;
+    public const int RequestSize = Int32Size;
+    public const int OperationSize = Int32Size;
+    public const int RequestHeaderSize = LengthSize + RequestSize + OperationSize;
 
-    public const int ConnectionIDSize = 8;
-    public const int ErrorSize = 4;
-    public const int MinimalResponseLength = RequestIDSize + ConnectionIDSize + ErrorSize;
+    public const int ConnectionSize = Int64Size;
+    public const int ErrorSize = Int32Size;
+    public const int MinimalResponseLength = RequestSize + ConnectionSize + ErrorSize;
+
+    public const int VersionSize = Int32Size;
+
+    public const int TimestampSize = Int64Size;
+
 
     public static void ValidateRequest(ReadOnlySpan<byte> request)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(request.Length, LengthSize + RequestIDSize + OperationSize);
+        ArgumentOutOfRangeException.ThrowIfLessThan(request.Length, LengthSize + RequestSize + OperationSize);
         var length = BinaryPrimitives.ReadInt32BigEndian(request);
         ArgumentOutOfRangeException.ThrowIfNotEqual(length, request.Length - LengthSize);
     }
 
-    public static int GetRequestID(ZooKeeperOperation operation, ref int previousRequest)
+    public static int GetRequest(ZooKeeperOperation operation, ref int previousRequest)
     {
         if (operation == ZooKeeperOperation.Ping)
-            return PingOperation.RequestID;
+            return PingOperation.Request;
 
         int oldValue, newValue;
         do
@@ -42,27 +48,40 @@ public static partial class Operations
     }
 
 
-    internal static int Write(Span<byte> destination, int value)
+    public static int Write(Span<byte> destination, int value)
     {
         BinaryPrimitives.WriteInt32BigEndian(destination, value);
         return 4;
     }
-    internal static int Write(Span<byte> destination, long value)
+
+    public static int Write(Span<byte> destination, long value)
     {
         BinaryPrimitives.WriteInt64BigEndian(destination, value);
         return 8;
     }
 
-    internal static void Write(IBufferWriter<byte> writer, int value)
+    public static int Write(Span<byte> destination, ReadOnlySpan<byte> buffer)
     {
-        var buffer = writer.GetSpan(4);
-        BinaryPrimitives.WriteInt32BigEndian(buffer, value);
-        writer.Advance(LengthSize);
+        Write(destination, buffer.Length);
+        buffer.CopyTo(destination.Slice(LengthSize));
+        return LengthSize + buffer.Length;
     }
-    internal static void Write(IBufferWriter<byte> writer, long value)
+
+
+    public static int ReadInt32(ReadOnlySpan<byte> source) =>
+        BinaryPrimitives.ReadInt32BigEndian(source);
+
+    public static long ReadInt64(ReadOnlySpan<byte> source) =>
+        BinaryPrimitives.ReadInt64BigEndian(source);
+
+    public static ReadOnlySpan<byte> ReadBuffer(ReadOnlySpan<byte> source, out int size)
     {
-        var buffer = writer.GetSpan(8);
-        BinaryPrimitives.WriteInt64BigEndian(buffer, value);
-        writer.Advance(LengthSize);
+        int length = ReadInt32(source);
+        size = length + LengthSize;
+        return source.Slice(LengthSize, length);
     }
+
+    public static DateTimeOffset ReadTimestamp(ReadOnlySpan<byte> source) =>
+        DateTimeOffset.FromUnixTimeMilliseconds(ReadInt64(source));
+
 }

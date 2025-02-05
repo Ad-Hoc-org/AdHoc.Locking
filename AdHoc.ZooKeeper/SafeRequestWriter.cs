@@ -13,7 +13,7 @@ internal class SafeRequestWriter
     private readonly IBufferWriter<byte> _writer;
 
     public int Length { get; private set; } = -1;
-    public int RequestID { get; private set; }
+    public int Request { get; private set; }
     public int Size { get; private set; }
 
     public bool IsCompleted => Length == Size;
@@ -38,15 +38,15 @@ internal class SafeRequestWriter
                 throw ZooKeeperException.CreateInvalidRequestSize(Length, Size);
 
             if (Length == RequestHeaderSize
-                && header.Slice(LengthSize + RequestIDSize).SequenceEqual(PingOperation._Operation.Span)
+                && header.Slice(LengthSize + RequestSize).SequenceEqual(PingOperation._Operation.Span)
             )
             {
                 IsPing = true;
-                RequestID = PingOperation.RequestID;
+                Request = PingOperation.Request;
                 return; // don't flush ping
             }
 
-            RequestID = BinaryPrimitives.ReadInt32BigEndian(header.Slice(LengthSize));
+            Request = BinaryPrimitives.ReadInt32BigEndian(header.Slice(LengthSize));
             _writer.Advance(Size);
             return;
         }

@@ -1,16 +1,15 @@
 // Copyright AdHoc Authors
 // SPDX-License-Identifier: MIT
 
-using System.Buffers.Binary;
 using System.Text;
 using static AdHoc.ZooKeeper.Abstractions.CreateOperation;
 using static AdHoc.ZooKeeper.Abstractions.Operations;
 
 namespace AdHoc.ZooKeeper.Abstractions;
-public class CreateOperation
+public sealed record CreateOperation
     : IZooKeeperOperation<Result>
 {
-    public enum ModeFlag : int
+    private enum ModeFlag : int
     {
         Persistent = 0,
         Ephemeral = 1,
@@ -44,6 +43,7 @@ public class CreateOperation
 
     private CreateOperation(ZooKeeperPath path, ReadOnlyMemory<byte> data, ModeFlag mode)
     {
+        path.Validate();
         Path = path;
         Data = data;
         _mode = mode;
@@ -55,20 +55,18 @@ public class CreateOperation
         var buffer = writer.GetSpan(RequestHeaderSize + Path.GetMaxSize(context.Root) + LengthSize + Data.Length + FlagSize);
         int size = LengthSize;
 
-        size += Write(buffer.Slice(size), context.GetRequestID(ZooKeeperOperation.Create));
+        size += Write(buffer.Slice(size), context.GetRequest(ZooKeeperOperation.Create));
 
         _Operation.Span.CopyTo(buffer.Slice(size));
         size += OperationSize;
 
-        size += Path.WriteAbsolute(buffer.Slice(size), context.Root);
+        size += Path.Write(buffer.Slice(size), context.Root);
 
-        size += Write(buffer.Slice(size), Data.Length);
-        Data.Span.CopyTo(buffer.Slice(size));
-        size += Data.Length;
+        size += Write(buffer.Slice(size), Data.Span);
 
         // TODO ACL
         size += Write(buffer.Slice(size), 1);
-        size += Write(buffer.Slice(size), (int)Permission.All);
+        size += Write(buffer.Slice(size), (int)ZooKeeperPermission.All);
         size += Write(buffer.Slice(size), "world".Length);
         size += Encoding.UTF8.GetBytes("world", buffer.Slice(size));
         size += Write(buffer.Slice(size), "anyone".Length);
@@ -88,7 +86,7 @@ public class CreateOperation
         response.ThrowIfError();
 
         return new(
-            Encoding.UTF8.GetString(response.Data.Slice(LengthSize, BinaryPrimitives.ReadInt32BigEndian(response.Data))),
+            ZooKeeperPath.Read(response.Data, out _),
             false
         );
     }
@@ -103,7 +101,7 @@ public class CreateOperation
 
     public readonly record struct Result(
         ZooKeeperPath Path,
-        bool AlreadyExists
+        bool AlreadyExisted
     );
 }
 

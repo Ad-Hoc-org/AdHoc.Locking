@@ -20,9 +20,9 @@ public class ZooKeeperClient
     private readonly string _host;
     private readonly int _port;
 
-    private byte[]? _sessionID;
-    public string? SessionID => _sessionID is null ? null
-        : BitConverter.ToString(_sessionID ?? []).Replace("-", "").ToLower();
+    private byte[]? _session;
+    public string? SessionIdentifier => _session is null ? null
+        : BitConverter.ToString(_session ?? []).Replace("-", "").ToLower();
 
     private byte[]? _sessionPassword;
 
@@ -83,8 +83,8 @@ public class ZooKeeperClient
                         int request;
                         do
                         {
-                            request = GetRequestID(operation, ref _previousRequest);
-                            if (request == PingOperation.RequestID)
+                            request = GetRequest(operation, ref _previousRequest);
+                            if (request == PingOperation.Request)
                                 break;
                         } while (!_pending.TryAdd(request, pending));
                         hasRequest = true;
@@ -101,10 +101,10 @@ public class ZooKeeperClient
                     throw ZooKeeperException.CreateInvalidRequestSize(writer.Length, writer.Size);
 
                 if (!hasRequest)
-                    throw new ZooKeeperException("RequestID has to be requested from context!");
+                    throw new ZooKeeperException("Request identifier has to be requested from context!");
 
                 await pipeWriter.FlushAsync(cancellationToken);
-                return writer.RequestID;
+                return writer.Request;
 
             }, operation, cancellationToken);
             if (wrote)
@@ -115,13 +115,13 @@ public class ZooKeeperClient
         Task<TResult>? ping = null;
         (var pingResult, wrote) = await WriteAsync(stream, async (stream, pending, cancellationToken) =>
         {
-            if (_receiving.TryGetValue(PingOperation.RequestID, out var task))
+            if (_receiving.TryGetValue(PingOperation.Request, out var task))
             {
                 if (operation is PingOperation)
                     ping = Task.Run(async () => await (Task<TResult>)task, cancellationToken);
                 else
                 {
-                    if (!_pending.TryGetValue(PingOperation.RequestID, out var response))
+                    if (!_pending.TryGetValue(PingOperation.Request, out var response))
                         throw new InvalidOperationException();
 #pragma warning disable VSTHRD003 // Avoid awaiting foreign Tasks
                     ping = Task.Run(async () => operation.ReadResponse(ToResponse(await response.Task)), cancellationToken);
@@ -130,10 +130,10 @@ public class ZooKeeperClient
                 return null;
             }
 
-            _pending[PingOperation.RequestID] = pending;
+            _pending[PingOperation.Request] = pending;
             await stream.WriteAsync(PingOperation._Header, cancellationToken);
             await stream.FlushAsync(cancellationToken);
-            return PingOperation.RequestID;
+            return PingOperation.Request;
         }, operation, cancellationToken);
         return wrote ? pingResult! : await ping!;
     }
@@ -157,7 +157,7 @@ public class ZooKeeperClient
                 return (default, false);
 
             receiveTask = ReceiveAsync(pending.Task, stream, operation, cancellationToken);
-            _receiving[PingOperation.RequestID] = receiveTask;
+            _receiving[PingOperation.Request] = receiveTask;
 
             // release lock after writing and task management is done
             _lock.Release();
@@ -237,10 +237,10 @@ public class ZooKeeperClient
         var span = response.Memory.Span;
         return new(
             Root,
-            response.RequestID,
-            connectionID: BinaryPrimitives.ReadInt64BigEndian(span.Slice(RequestIDSize)),
-            error: (ZooKeeperError)BinaryPrimitives.ReadInt32BigEndian(span.Slice(RequestIDSize + ConnectionIDSize)),
-            data: span.Slice(RequestIDSize + ConnectionIDSize + ErrorSize)
+            response.Request,
+            connectionIdentifier: BinaryPrimitives.ReadInt64BigEndian(span.Slice(RequestSize)),
+            error: (ZooKeeperError)BinaryPrimitives.ReadInt32BigEndian(span.Slice(RequestSize + ConnectionSize)),
+            data: span.Slice(RequestSize + ConnectionSize + ErrorSize)
         );
     }
 
@@ -266,7 +266,7 @@ public class ZooKeeperClient
                     return;
                 }
 
-                var responseLength = BinaryPrimitives.ReadInt32BigEndian(buffer.Span.Slice(0, LengthSize));
+                var responseLength = ReadInt32(buffer.Span.Slice(0, LengthSize));
                 if (responseLength < MinimalResponseLength)
                 {
                     await DisconnectWithAsync(new ZooKeeperException($"Invalid ZooKeeper response!"), cancellationToken);
@@ -288,10 +288,10 @@ public class ZooKeeperClient
                     return;
                 }
 
-                var requestID = BinaryPrimitives.ReadInt32BigEndian(buffer.Span);
-                if (_pending.TryRemove(requestID, out var request))
+                var requestIdentifier = ReadInt32(buffer.Span);
+                if (_pending.TryRemove(requestIdentifier, out var request))
                 {
-                    if (!request.TrySetResult(new Response(bufferOwner, requestID, response)))
+                    if (!request.TrySetResult(new Response(bufferOwner, requestIdentifier, response)))
                         bufferOwner.Dispose();
                     bufferOwner = null;
                 }
@@ -299,7 +299,7 @@ public class ZooKeeperClient
         }
         catch (Exception ex) when (!stream.Socket.Connected)
         {
-            await DisconnectWithAsync(ZooKeeperException.CreateTimeout(SessionID, ex), cancellationToken);
+            await DisconnectWithAsync(ZooKeeperException.CreateSessionExpired(SessionIdentifier, ex), cancellationToken);
         }
         catch (Exception ex)
         {
@@ -372,7 +372,7 @@ public class ZooKeeperClient
                 if (await stream.ReadAsync(buffer.Slice(0, responseLength), cancellationToken) != responseLength)
                     throw new ZooKeeperException($"Invalid ZooKeeper response!");
 
-                _sessionID = buffer.Span.Slice(8, SessionIDSize).ToArray();
+                _session = buffer.Span.Slice(8, SessionSize).ToArray();
                 _sessionPassword = new byte[BinaryPrimitives.ReadInt32BigEndian(buffer.Span.Slice(16, LengthSize))];
                 buffer.Slice(20, _sessionPassword.Length).CopyTo(_sessionPassword);
 
@@ -412,7 +412,7 @@ public class ZooKeeperClient
 
         Exception exception = innerException;
         if (innerException is SocketException)
-            exception = ZooKeeperException.CreateTimeout(SessionID, innerException);
+            exception = ZooKeeperException.CreateSessionExpired(SessionIdentifier, innerException);
 
         @throw?.Invoke(exception);
         if (exception == innerException)
@@ -441,13 +441,13 @@ public class ZooKeeperClient
     {
         private readonly IMemoryOwner<byte> _owner;
 
-        public int RequestID { get; }
+        public int Request { get; }
         public ReadOnlyMemory<byte> Memory { get; }
 
-        public Response(IMemoryOwner<byte> owner, int requestID, ReadOnlyMemory<byte> memory)
+        public Response(IMemoryOwner<byte> owner, int request, ReadOnlyMemory<byte> memory)
         {
             _owner = owner;
-            RequestID = requestID;
+            Request = request;
             Memory = memory;
         }
 

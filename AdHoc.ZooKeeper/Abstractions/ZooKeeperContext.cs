@@ -8,17 +8,17 @@ public readonly struct ZooKeeperContext
 {
     public IBufferWriter<byte> Writer { get; }
 
-    public Func<ZooKeeperOperation, int> GetRequestID { get; }
+    public Func<ZooKeeperOperation, int> GetRequest { get; }
 
     public ZooKeeperPath Root { get; init; }
 
 
     public ZooKeeperContext(
         IBufferWriter<byte> writer,
-        Func<ZooKeeperOperation, int> getRequestID
+        Func<ZooKeeperOperation, int> getRequest
     )
     {
         Writer = writer;
-        GetRequestID = getRequestID;
+        GetRequest = getRequest;
     }
 }

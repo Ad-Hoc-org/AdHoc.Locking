@@ -29,8 +29,16 @@ using AdHoc.ZooKeeper.Abstractions;
 
 CancellationToken cancellationToken = default;
 await using var client = new ZooKeeperClient("localhost", 2181);
+Console.WriteLine(await client.CreateAsync("foo", "bar"u8.ToArray(), cancellationToken));
+Console.WriteLine(await client.ExistsAsync("foo", cancellationToken));
+Console.WriteLine(await client.GetDataAsync("foo", cancellationToken));
 Console.WriteLine(await client.CreateAsync("foo", cancellationToken));
 Console.WriteLine(await client.CreateEphemeralAsync("ephemeral", cancellationToken));
+Console.WriteLine(await client.GetDataAsync("ephemeral", cancellationToken));
+Console.WriteLine(await client.ExistsAsync("empty", cancellationToken));
+Console.WriteLine(await client.GetDataAsync("empty", cancellationToken));
+Console.WriteLine(await client.DeleteAsync("foo", cancellationToken));
+Console.WriteLine(await client.DeleteAsync("foo", cancellationToken));
 
 
 
