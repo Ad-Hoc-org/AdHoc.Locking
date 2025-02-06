@@ -3,10 +3,11 @@
 
 using System.Buffers;
 using static AdHoc.ZooKeeper.Abstractions.Operations;
+using static AdHoc.ZooKeeper.Abstractions.PingOperation;
 
 namespace AdHoc.ZooKeeper.Abstractions;
 public sealed record PingOperation
-    : IZooKeeperOperation<ZooKeeperStatus>
+    : IZooKeeperOperation<Result>
 {
     public const int Request = -2;
 
@@ -27,16 +28,21 @@ public sealed record PingOperation
     public void WriteRequest(in ZooKeeperContext context) =>
         context.Writer.Write(_Header.Span);
 
-    public ZooKeeperStatus ReadResponse(in ZooKeeperResponse response, IZooKeeperWatcher? watcher) =>
-        response.Status;
+    public Result ReadResponse(in ZooKeeperResponse response, IZooKeeperWatcher? watcher) =>
+        new(response.Transaction, response.Status);
 
+
+    public readonly record struct Result(
+        long Transaction,
+        ZooKeeperStatus Status
+    );
 }
 
 public static partial class Operations
 {
     public static PingOperation Ping { get; } = new PingOperation();
 
-    public static Task<ZooKeeperStatus> PingAsync(
+    public static Task<Result> PingAsync(
         this IZooKeeper zooKeeper,
         CancellationToken cancellationToken
     ) =>

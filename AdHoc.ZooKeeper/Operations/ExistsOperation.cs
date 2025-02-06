@@ -53,7 +53,7 @@ public sealed record ExistsOperation
     public Result ReadResponse(in ZooKeeperResponse response, IZooKeeperWatcher? watcher)
     {
         if (response.Status == ZooKeeperStatus.NoNode)
-            return default;
+            return new(response.Transaction, default, default);
 
         response.ThrowIfError();
 
@@ -62,7 +62,7 @@ public sealed record ExistsOperation
             (response.Root + Path).Absolute(),
             out _
         );
-        return new(node, watcher);
+        return new(response.Transaction, node, watcher);
     }
 
 
@@ -71,6 +71,7 @@ public sealed record ExistsOperation
 
 
     public readonly record struct Result(
+        long Transaction,
         ZooKeeperNode? Node,
         IZooKeeperWatcher? Watcher
     );

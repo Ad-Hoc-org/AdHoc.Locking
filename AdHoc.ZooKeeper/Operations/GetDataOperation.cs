@@ -53,12 +53,13 @@ public sealed record GetDataOperation
     public Result ReadResponse(in ZooKeeperResponse response, IZooKeeperWatcher? watcher)
     {
         if (response.Status == ZooKeeperStatus.NoNode)
-            return default;
+            return new(response.Transaction, default, default, default);
 
         response.ThrowIfError();
 
         var data = ReadBuffer(response.Data, out int pos);
         return new(
+            response.Transaction,
             data.ToArray(),
             ZooKeeperNode.Read(
                 response.Data.Slice(pos),
@@ -75,6 +76,7 @@ public sealed record GetDataOperation
 
 
     public readonly record struct Result(
+        long Transaction,
         ReadOnlyMemory<byte> Data,
         ZooKeeperNode? Node,
         IZooKeeperWatcher? Watcher
