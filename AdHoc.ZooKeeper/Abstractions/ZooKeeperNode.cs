@@ -19,7 +19,7 @@ public readonly record struct ZooKeeperNode(
     long ChildrenLastModifier
 )
 {
-    public static ZooKeeperNode ReadStats(ReadOnlySpan<byte> source, ZooKeeperPath path, out int size)
+    public static ZooKeeperNode Read(ReadOnlySpan<byte> source, ZooKeeperPath path, out int size)
     {
         size = SessionSize + SessionSize
             + TimestampSize + TimestampSize

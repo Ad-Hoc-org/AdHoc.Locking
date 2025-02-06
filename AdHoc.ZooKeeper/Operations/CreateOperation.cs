@@ -80,7 +80,7 @@ public sealed record CreateOperation
 
     public Result ReadResponse(in ZooKeeperResponse response, IZooKeeperWatcher? watcher)
     {
-        if (response.Error == ZooKeeperError.NodeExists)
+        if (response.Status == ZooKeeperStatus.NodeExists)
             return new((response.Root + Path).Absolute(), true);
 
         response.ThrowIfError();

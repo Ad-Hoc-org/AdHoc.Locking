@@ -8,6 +8,8 @@ namespace AdHoc.ZooKeeper.Abstractions;
 public interface IZooKeeperWatcher
     : IAsyncDisposable
 {
+    // TODO its states in the events
+    // https://github.com/apache/zookeeper/blob/a8eb7faa34e90c748f5f49f211a6dbad78c16f0b/zookeeper-server/src/main/java/org/apache/zookeeper/Watcher.java#L105
     public enum Types : int
     {
         Children = 1,

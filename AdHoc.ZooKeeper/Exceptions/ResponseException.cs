@@ -7,9 +7,9 @@ namespace AdHoc.ZooKeeper.Abstractions;
 public class ResponseException : ZooKeeperException
 {
 
-    public ZooKeeperError Error { get; }
+    public ZooKeeperStatus Status { get; }
 
-    public ResponseException(ZooKeeperError error) => Error = error;
-    public ResponseException(ZooKeeperError error, string message) : base(message) => Error = error;
-    public ResponseException(ZooKeeperError error, string message, Exception inner) : base(message, inner) => Error = error;
+    public ResponseException(ZooKeeperStatus status) => Status = status;
+    public ResponseException(ZooKeeperStatus status, string message) : base(message) => Status = status;
+    public ResponseException(ZooKeeperStatus status, string message, Exception inner) : base(message, inner) => Status = status;
 }

@@ -52,7 +52,7 @@ public sealed record GetDataOperation
 
     public Result ReadResponse(in ZooKeeperResponse response, IZooKeeperWatcher? watcher)
     {
-        if (response.Error == ZooKeeperError.NoNode)
+        if (response.Status == ZooKeeperStatus.NoNode)
             return default;
 
         response.ThrowIfError();
@@ -60,7 +60,7 @@ public sealed record GetDataOperation
         var data = ReadBuffer(response.Data, out int pos);
         return new(
             data.ToArray(),
-            ZooKeeperNode.ReadStats(
+            ZooKeeperNode.Read(
                 response.Data.Slice(pos),
                 (response.Root + Path).Absolute(),
                 out _

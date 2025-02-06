@@ -6,10 +6,10 @@ using static AdHoc.ZooKeeper.Abstractions.ZooKeeperEvent;
 
 namespace AdHoc.ZooKeeper.Abstractions;
 public readonly record struct ZooKeeperEvent(
-    long Connection,
-    ZooKeeperError Error,
-    IZooKeeperWatcher.Types Watcher,
+    long Trigger,
+    ZooKeeperStatus Status,
     Types Type,
+    IZooKeeperWatcher.Types Watcher,
     ZooKeeperPath Path
 )
 {
@@ -27,7 +27,7 @@ public readonly record struct ZooKeeperEvent(
 
     public const int NoRequest = -1;
 
-    private const int _EventHeaderSize = RequestSize + ConnectionSize + ErrorSize + Int32Size + Int32Size;
+    private const int _EventHeaderSize = RequestSize + TransactionSize + StatusSize + Int32Size + Int32Size;
     private static readonly ReadOnlyMemory<byte> _NoRequest = new byte[] { 255, 255, 255, 255 };
 
     public static ZooKeeperEvent Read(ReadOnlySpan<byte> source, out int size)
@@ -38,9 +38,9 @@ public readonly record struct ZooKeeperEvent(
         size += _EventHeaderSize;
         return new(
             ReadInt64(source.Slice(RequestSize)),
-            (ZooKeeperError)ReadInt32(source.Slice(RequestSize + ConnectionSize)),
-            (IZooKeeperWatcher.Types)ReadInt32(source.Slice(RequestSize + ConnectionSize + Int32Size)),
-            (Types)ReadInt32(source.Slice(RequestSize + ConnectionSize + Int32Size + Int32Size)),
+            (ZooKeeperStatus)ReadInt32(source.Slice(RequestSize + TransactionSize)),
+            (Types)ReadInt32(source.Slice(RequestSize + TransactionSize + Int32Size)),
+            (IZooKeeperWatcher.Types)ReadInt32(source.Slice(RequestSize + TransactionSize + Int32Size + Int32Size)),
             path
         );
     }

@@ -42,7 +42,7 @@ public sealed record DeleteOperation
 
     public Result ReadResponse(in ZooKeeperResponse response, IZooKeeperWatcher? watcher)
     {
-        if (response.Error == ZooKeeperError.NoNode)
+        if (response.Status == ZooKeeperStatus.NoNode)
             return new(false);
 
         response.ThrowIfError();

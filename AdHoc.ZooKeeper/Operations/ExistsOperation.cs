@@ -52,12 +52,12 @@ public sealed record ExistsOperation
 
     public Result ReadResponse(in ZooKeeperResponse response, IZooKeeperWatcher? watcher)
     {
-        if (response.Error == ZooKeeperError.NoNode)
+        if (response.Status == ZooKeeperStatus.NoNode)
             return default;
 
         response.ThrowIfError();
 
-        var node = ZooKeeperNode.ReadStats(
+        var node = ZooKeeperNode.Read(
             response.Data,
             (response.Root + Path).Absolute(),
             out _

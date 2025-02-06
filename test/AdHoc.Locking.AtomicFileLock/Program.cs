@@ -2,10 +2,6 @@
 using AdHoc.ZooKeeper;
 using AdHoc.ZooKeeper.Abstractions;
 
-// TODO refactor connection to response ID
-// TODO refactor error to status
-
-
 
 //try
 //{
@@ -35,49 +31,35 @@ using AdHoc.ZooKeeper.Abstractions;
 
 
 
-
 CancellationToken cancellationToken = default;
 
 await using var client = new ZooKeeperClient("localhost", 2181);
 
-Console.WriteLine(await client.ExistsAsync("foo", LogEvents(), cancellationToken));
-await Task.Delay(1000);
+Console.WriteLine(await client.ExistsAsync("foo", LogEvents, cancellationToken));
 Console.WriteLine(await client.CreateAsync("foo", "bar"u8.ToArray(), cancellationToken));
-await Task.Delay(1000);
 Console.WriteLine(await client.ExistsAsync("foo", cancellationToken));
-await Task.Delay(1000);
 
-Console.WriteLine(await client.GetDataAsync("foo", cancellationToken));
-await Task.Delay(1000);
+Console.WriteLine(await client.GetDataAsync("foo", LogEvents, cancellationToken));
 Console.WriteLine(await client.CreateAsync("foo", cancellationToken));
-await Task.Delay(1000);
 
 Console.WriteLine(await client.CreateEphemeralAsync("ephemeral", cancellationToken));
-await Task.Delay(1000);
-Console.WriteLine(await client.GetDataAsync("ephemeral", cancellationToken));
-await Task.Delay(1000);
+Console.WriteLine(await client.GetDataAsync("ephemeral", LogEvents, cancellationToken));
 
 Console.WriteLine(await client.ExistsAsync("empty", cancellationToken));
-await Task.Delay(1000);
 Console.WriteLine(await client.GetDataAsync("empty", cancellationToken));
-await Task.Delay(1000);
 
 Console.WriteLine(await client.DeleteAsync("foo", cancellationToken));
-await Task.Delay(1000);
 Console.WriteLine(await client.CreateAsync("foo", "bar"u8.ToArray(), cancellationToken));
-await Task.Delay(1000);
 Console.WriteLine(await client.DeleteAsync("foo", cancellationToken));
-await Task.Delay(1000);
 
 Console.WriteLine("done");
 
-IZooKeeperWatcher.Watch LogEvents() => (_, ev) =>
+void LogEvents(IZooKeeperWatcher _, ZooKeeperEvent ev)
 {
     var bg = Console.BackgroundColor;
     Console.BackgroundColor = ConsoleColor.DarkGreen;
     Console.WriteLine(ev);
     Console.BackgroundColor = bg;
-    //await client.ExistsAsync("foo", Exists(), cancellationToken);
 };
 //await client.PingAsync(cancellation);
 //await client.CreateAsync("/test", Encoding.UTF8.GetBytes("hello"), cancellation);

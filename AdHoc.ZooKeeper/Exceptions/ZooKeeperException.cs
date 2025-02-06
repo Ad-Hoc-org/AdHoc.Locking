@@ -21,6 +21,6 @@ public class ZooKeeperException
     public static InvalidRequestException CreateInvalidRequestSize(int length, int size) =>
         new($"Request length is {length} but {size} was written.");
 
-    public static ResponseException CreateResponseError(ZooKeeperError error) =>
-        new(error, $"Response indicate an error: {error}");
+    public static ResponseException CreateResponseError(ZooKeeperStatus status) =>
+        new(status, $"Response indicate an error: {status}");
 }

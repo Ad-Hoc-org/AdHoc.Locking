@@ -15,9 +15,9 @@ public static partial class Operations
     public const int OperationSize = Int32Size;
     public const int RequestHeaderSize = LengthSize + RequestSize + OperationSize;
 
-    public const int ConnectionSize = Int64Size;
-    public const int ErrorSize = Int32Size;
-    public const int MinimalResponseLength = RequestSize + ConnectionSize + ErrorSize;
+    public const int TransactionSize = Int64Size;
+    public const int StatusSize = Int32Size;
+    public const int MinimalResponseLength = RequestSize + TransactionSize + StatusSize;
 
     public const int VersionSize = Int32Size;
 

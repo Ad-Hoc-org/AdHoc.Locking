@@ -6,7 +6,7 @@ using static AdHoc.ZooKeeper.Abstractions.Operations;
 
 namespace AdHoc.ZooKeeper.Abstractions;
 public sealed record PingOperation
-    : IZooKeeperOperation<ZooKeeperError>
+    : IZooKeeperOperation<ZooKeeperStatus>
 {
     public const int Request = -2;
 
@@ -27,8 +27,8 @@ public sealed record PingOperation
     public void WriteRequest(in ZooKeeperContext context) =>
         context.Writer.Write(_Header.Span);
 
-    public ZooKeeperError ReadResponse(in ZooKeeperResponse response, IZooKeeperWatcher? watcher) =>
-        response.Error;
+    public ZooKeeperStatus ReadResponse(in ZooKeeperResponse response, IZooKeeperWatcher? watcher) =>
+        response.Status;
 
 }
 
@@ -36,7 +36,7 @@ public static partial class Operations
 {
     public static PingOperation Ping { get; } = new PingOperation();
 
-    public static Task<ZooKeeperError> PingAsync(
+    public static Task<ZooKeeperStatus> PingAsync(
         this IZooKeeper zooKeeper,
         CancellationToken cancellationToken
     ) =>

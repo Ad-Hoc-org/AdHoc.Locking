@@ -7,29 +7,29 @@ public readonly ref struct ZooKeeperResponse
 
     public ZooKeeperPath Root { get; }
 
-    public int RequestIdentifier { get; }
-    public long ConnectionIdentifier { get; }
-    public ZooKeeperError Error { get; }
+    public int Request { get; }
+    public long Transaction { get; }
+    public ZooKeeperStatus Status { get; }
     public ReadOnlySpan<byte> Data { get; }
 
     public ZooKeeperResponse(
         ZooKeeperPath root,
-        int requestIdentifier,
-        long connectionIdentifier,
-        ZooKeeperError error,
+        int request,
+        long transaction,
+        ZooKeeperStatus status,
         ReadOnlySpan<byte> data
     )
     {
         Root = root;
-        RequestIdentifier = requestIdentifier;
-        ConnectionIdentifier = connectionIdentifier;
-        Error = error;
+        Request = request;
+        Transaction = transaction;
+        Status = status;
         Data = data;
     }
 
     public void ThrowIfError()
     {
-        if (Error != ZooKeeperError.Ok)
-            throw ZooKeeperException.CreateResponseError(Error);
+        if (Status != ZooKeeperStatus.Ok)
+            throw ZooKeeperException.CreateResponseError(Status);
     }
 }

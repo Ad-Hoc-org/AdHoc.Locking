@@ -272,9 +272,9 @@ public class ZooKeeperClient
         return new(
             Root,
             response.Request,
-            connectionIdentifier: BinaryPrimitives.ReadInt64BigEndian(span.Slice(RequestSize)),
-            error: (ZooKeeperError)BinaryPrimitives.ReadInt32BigEndian(span.Slice(RequestSize + ConnectionSize)),
-            data: span.Slice(RequestSize + ConnectionSize + ErrorSize)
+            transaction: BinaryPrimitives.ReadInt64BigEndian(span.Slice(RequestSize)),
+            status: (ZooKeeperStatus)BinaryPrimitives.ReadInt32BigEndian(span.Slice(RequestSize + TransactionSize)),
+            data: span.Slice(RequestSize + TransactionSize + StatusSize)
         );
     }
 

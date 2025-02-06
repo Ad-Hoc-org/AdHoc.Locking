@@ -10,7 +10,7 @@ public static partial class Operations
     public const int TimeoutSize = Int32Size;
     public const int SessionSize = Int64Size;
     public const int ReadOnlySize = BooleanSize;
-    public const int StartSessionSize = LengthSize + ProtocolVersionSize + ConnectionSize + TimeoutSize + SessionSize + LengthSize + ReadOnlySize;
+    public const int StartSessionSize = LengthSize + ProtocolVersionSize + TransactionSize + TimeoutSize + SessionSize + LengthSize + ReadOnlySize;
 
     public const int DefaultPasswordSize = 16;
     public const int DefaultSessionResponseSize = LengthSize + RequestSize + TimeoutSize + SessionSize + LengthSize + DefaultPasswordSize + ReadOnlySize;
