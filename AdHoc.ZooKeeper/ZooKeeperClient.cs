@@ -4,11 +4,13 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Runtime.ExceptionServices;
 using AdHoc.ZooKeeper.Abstractions;
+using static AdHoc.ZooKeeper.Abstractions.IZooKeeperWatcher;
 using static AdHoc.ZooKeeper.Abstractions.Operations;
 
 namespace AdHoc.ZooKeeper;
@@ -21,7 +23,7 @@ public class ZooKeeperClient
     private readonly int _port;
 
     private byte[]? _session;
-    public string? SessionIdentifier => _session is null ? null
+    public string? Session => _session is null ? null
         : BitConverter.ToString(_session ?? []).Replace("-", "").ToLower();
 
     private byte[]? _sessionPassword;
@@ -37,8 +39,12 @@ public class ZooKeeperClient
 
     private int _previousRequest;
     private Task _receiveTask;
+
+    private readonly ConcurrentDictionary<string, ConcurrentDictionary<Watcher, WatchAsync>> _watchers;
+
     private readonly ConcurrentDictionary<int, TaskCompletionSource<Response>> _pending;
     private readonly ConcurrentDictionary<int, Task> _receiving;
+
     private readonly CancellationTokenSource _disposeSource;
 
 
@@ -48,6 +54,7 @@ public class ZooKeeperClient
         _port = port;
         _pending = new();
         _receiving = new();
+        _watchers = new();
         _receiveTask = Task.CompletedTask;
         _disposeSource = new();
     }
@@ -76,7 +83,9 @@ public class ZooKeeperClient
                 var pipeWriter = PipeWriter.Create(stream);
                 var writer = new SafeRequestWriter(pipeWriter);
                 bool hasRequest = false;
+                Watcher? watcher = null;
                 operation.WriteRequest(new(
+                    Root,
                     writer,
                     (operation) =>
                     {
@@ -89,13 +98,13 @@ public class ZooKeeperClient
                         } while (!_pending.TryAdd(request, pending));
                         hasRequest = true;
                         return request;
-                    })
-                {
-                    Root = Root
-                });
+                    },
+                    (IEnumerable<ZooKeeperPath> paths, Types type, WatchAsync watch) =>
+                        watcher = RegisterWatcher(paths, type, watch)
+                ));
 
                 if (writer.IsPing)
-                    return null;
+                    return default;
 
                 if (writer.IsCompleted)
                     throw ZooKeeperException.CreateInvalidRequestSize(writer.Length, writer.Size);
@@ -104,7 +113,7 @@ public class ZooKeeperClient
                     throw new ZooKeeperException("Request identifier has to be requested from context!");
 
                 await pipeWriter.FlushAsync(cancellationToken);
-                return writer.Request;
+                return (writer.Request, watcher);
 
             }, operation, cancellationToken);
             if (wrote)
@@ -124,23 +133,46 @@ public class ZooKeeperClient
                     if (!_pending.TryGetValue(PingOperation.Request, out var response))
                         throw new InvalidOperationException();
 #pragma warning disable VSTHRD003 // Avoid awaiting foreign Tasks
-                    ping = Task.Run(async () => operation.ReadResponse(ToResponse(await response.Task)), cancellationToken);
+                    ping = Task.Run(async () => operation.ReadResponse(ToResponse(await response.Task), null), cancellationToken);
 #pragma warning restore VSTHRD003 // Avoid awaiting foreign Tasks
                 }
-                return null;
+                return default;
             }
 
             _pending[PingOperation.Request] = pending;
             await stream.WriteAsync(PingOperation._Header, cancellationToken);
             await stream.FlushAsync(cancellationToken);
-            return PingOperation.Request;
+            return (PingOperation.Request, null);
         }, operation, cancellationToken);
         return wrote ? pingResult! : await ping!;
     }
 
+
+    private Watcher RegisterWatcher(IEnumerable<ZooKeeperPath> paths, Types type, WatchAsync watch)
+    {
+        var watcherPaths = paths.Select(p => p.Absolute().Value).ToImmutableHashSet();
+        var watcher = new Watcher(this, watcherPaths, type);
+        foreach (var path in watcherPaths)
+            _watchers.AddOrUpdate(path,
+                _ =>
+                {
+                    ConcurrentDictionary<Watcher, WatchAsync> watchers = new();
+                    watchers[watcher] = watch;
+                    return watchers;
+                },
+                (_, watchers) =>
+                {
+                    watchers.TryAdd(watcher, watch);
+                    return watchers;
+                }
+            );
+        return watcher;
+    }
+
+
     private async Task<(TResult?, bool)> WriteAsync<TResult>(
         NetworkStream stream,
-        Func<NetworkStream, TaskCompletionSource<Response>, CancellationToken, ValueTask<int?>> writeAsync,
+        Func<NetworkStream, TaskCompletionSource<Response>, CancellationToken, ValueTask<(int?, Watcher?)>> writeAsync,
         IZooKeeperOperation<TResult> operation,
         CancellationToken cancellationToken
     )
@@ -152,11 +184,11 @@ public class ZooKeeperClient
         Task<TResult>? receiveTask = null;
         try
         {
-            request = await writeAsync(stream, pending, cancellationToken);
+            (request, var watcher) = await writeAsync(stream, pending, cancellationToken);
             if (request is null)
                 return (default, false);
 
-            receiveTask = ReceiveAsync(pending.Task, stream, operation, cancellationToken);
+            receiveTask = ReceiveAsync(pending.Task, stream, operation, watcher, cancellationToken);
             _receiving[PingOperation.Request] = receiveTask;
 
             // release lock after writing and task management is done
@@ -205,6 +237,7 @@ public class ZooKeeperClient
         Task<Response> pending,
         NetworkStream stream,
         IZooKeeperOperation<TResult> operation,
+        Watcher? watcher,
         CancellationToken cancellationToken
     )
     {
@@ -217,7 +250,7 @@ public class ZooKeeperClient
             if (receiveTask.IsCompleted)
             {
                 ObjectDisposedException.ThrowIf(receiveTask.IsCanceled, true);
-                _receiveTask = receiveTask = ReceiveResponsesAsync(stream, _disposeSource.Token);
+                _receiveTask = receiveTask = ReceiveResponsesAsync(stream);
             }
 
 #pragma warning disable VSTHRD003 // Avoid awaiting foreign Tasks
@@ -227,8 +260,9 @@ public class ZooKeeperClient
 
         return operation.ReadResponse(
 #pragma warning disable VSTHRD003 // Avoid awaiting foreign Tasks
-            ToResponse(await pending)
+            ToResponse(await pending),
 #pragma warning restore VSTHRD003 // Avoid awaiting foreign Tasks
+            watcher
         );
     }
 
@@ -245,15 +279,16 @@ public class ZooKeeperClient
     }
 
 
-    private async Task ReceiveResponsesAsync(NetworkStream stream, CancellationToken cancellationToken)
+    private async Task ReceiveResponsesAsync(NetworkStream stream)
     {
+        CancellationToken cancellationToken = _disposeSource.Token;
         await Task.Yield();
 
         IMemoryOwner<byte>? bufferOwner = null;
         Memory<byte> buffer;
         try
         {
-            while (!_pending.IsEmpty)
+            while (!_pending.IsEmpty || !_watchers.IsEmpty)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -288,21 +323,65 @@ public class ZooKeeperClient
                     return;
                 }
 
-                var requestIdentifier = ReadInt32(buffer.Span);
+                var requestIdentifier = ReadInt32(response.Span);
                 if (_pending.TryRemove(requestIdentifier, out var request))
                 {
                     if (!request.TrySetResult(new Response(bufferOwner, requestIdentifier, response)))
                         bufferOwner.Dispose();
                     bufferOwner = null;
                 }
+                else if (requestIdentifier == ZooKeeperEvent.NoRequest)
+                {
+                    try
+                    {
+                        var @event = ZooKeeperEvent.Read(response.Span, out _);
+                        var path = @event.Path.Value;
+                        if (_watchers.TryGetValue(path, out var watchers))
+                        {
+                            foreach (var watchPair in watchers)
+                                try
+                                {
+                                    watchers.TryRemove(watchPair);
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                                    // run in background
+                                    watchPair.Value(watchPair.Key, @event, _disposeSource.Token);
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                                }
+                                catch
+                                {
+                                    // TODO log handler
+                                }
+
+
+                            if (watchers.IsEmpty && _watchers.TryRemove(KeyValuePair.Create(path, watchers)))
+                            {
+                                // readd after watchers was added before removing
+                                if (!watchers.IsEmpty)
+                                    _watchers.AddOrUpdate(path, watchers, (_, newWatches) =>
+                                    {
+                                        foreach (var watcher in watchers)
+                                            newWatches.TryAdd(watcher.Key, watcher.Value);
+                                        return newWatches;
+                                    });
+                            }
+                        }
+                    }
+                    // failed read event
+                    catch (Exception ex)
+                    {
+                        await DisconnectWithAsync(new ZooKeeperException($"Invalid ZooKeeper event!", ex), cancellationToken);
+                    }
+                }
             }
         }
         catch (Exception ex) when (!stream.Socket.Connected)
         {
-            await DisconnectWithAsync(ZooKeeperException.CreateSessionExpired(SessionIdentifier, ex), cancellationToken);
+            // TODO if session is null never connected
+            await DisconnectWithAsync(ZooKeeperException.CreateSessionExpired(Session!, ex), cancellationToken);
         }
         catch (Exception ex)
         {
+            // TODO if canceled by dispose close session graceful
             await DisconnectWithAsync(ex, cancellationToken);
         }
         finally
@@ -412,7 +491,8 @@ public class ZooKeeperClient
 
         Exception exception = innerException;
         if (innerException is SocketException)
-            exception = ZooKeeperException.CreateSessionExpired(SessionIdentifier, innerException);
+            // TODO if session is null couldn't connect
+            exception = ZooKeeperException.CreateSessionExpired(Session!, innerException);
 
         @throw?.Invoke(exception);
         if (exception == innerException)
@@ -422,7 +502,7 @@ public class ZooKeeperClient
     }
 
 
-
+    // TODO dispose watchers
     public async ValueTask DisposeAsync()
     {
         await _disposeSource.CancelAsync();
@@ -431,6 +511,32 @@ public class ZooKeeperClient
             try { await receiveTask; } catch { }
         _tcpClient?.Dispose();
         _disposeSource.Dispose();
+    }
+
+
+
+    private class Watcher
+        : IZooKeeperWatcher
+    {
+        private readonly ZooKeeperClient _client;
+        private readonly ImmutableHashSet<string> _paths;
+
+        public Watcher(ZooKeeperClient client, ImmutableHashSet<string> paths, Types type)
+        {
+            _client = client;
+            _paths = paths;
+            Type = type;
+        }
+
+        public Types Type { get; }
+
+        public ValueTask DisposeAsync()
+        {
+            foreach (var path in _paths)
+                if (_client._watchers.TryGetValue(path, out var watchers))
+                    watchers.TryRemove(this, out _);
+            return ValueTask.CompletedTask;
+        }
     }
 
 

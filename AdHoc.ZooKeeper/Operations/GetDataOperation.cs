@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 using static AdHoc.ZooKeeper.Abstractions.GetDataOperation;
+using static AdHoc.ZooKeeper.Abstractions.IZooKeeperWatcher;
 using static AdHoc.ZooKeeper.Abstractions.Operations;
 
 namespace AdHoc.ZooKeeper.Abstractions;
@@ -10,13 +11,19 @@ public sealed record GetDataOperation
 {
     private static readonly ReadOnlyMemory<byte> _Operation = new byte[] { 0, 0, 0, 4 };
 
+
     public ZooKeeperPath Path { get; }
 
-    private GetDataOperation(ZooKeeperPath path)
+    public WatchAsync? Watch { get; }
+
+
+    private GetDataOperation(ZooKeeperPath path, WatchAsync? watch)
     {
         path.Validate();
         Path = path;
+        Watch = watch;
     }
+
 
     public void WriteRequest(in ZooKeeperContext context)
     {
@@ -31,14 +38,19 @@ public sealed record GetDataOperation
 
         size += Path.Write(buffer.Slice(size), context.Root);
 
-        // TODO watches
-        buffer[size++] = 0;
+        if (Watch is not null)
+        {
+            context.RegisterWatcher([(context.Root + Path).Absolute()], Types.Any, Watch);
+            buffer[size++] = 1;
+        }
+        else
+            buffer[size++] = 0;
 
         Write(buffer, size - LengthSize);
         writer.Advance(size);
     }
 
-    public Result ReadResponse(in ZooKeeperResponse response)
+    public Result ReadResponse(in ZooKeeperResponse response, IZooKeeperWatcher? watcher)
     {
         if (response.Error == ZooKeeperError.NoNode)
             return default;
@@ -52,21 +64,41 @@ public sealed record GetDataOperation
                 response.Data.Slice(pos),
                 (response.Root + Path).Absolute(),
                 out _
-            )
+            ),
+            watcher
         );
     }
 
-    public static GetDataOperation Create(ZooKeeperPath path) =>
-        new(path);
+
+    public static GetDataOperation Create(ZooKeeperPath path, WatchAsync? watch = null) =>
+        new(path, watch);
+
 
     public readonly record struct Result(
         ReadOnlyMemory<byte> Data,
-        ZooKeeperNode? Node
+        ZooKeeperNode? Node,
+        IZooKeeperWatcher? Watcher
     );
 }
 
 public static partial class Operations
 {
+    public static Task<Result> GetDataAsync(
+        this IZooKeeper zooKeeper,
+        ZooKeeperPath path,
+        WatchAsync watch,
+        CancellationToken cancellationToken
+    ) =>
+        zooKeeper.ExecuteAsync(Create(path), cancellationToken);
+
+    public static Task<Result> GetDataAsync(
+        this IZooKeeper zooKeeper,
+        ZooKeeperPath path,
+        Watch watch,
+        CancellationToken cancellationToken
+    ) =>
+        zooKeeper.ExecuteAsync(Create(path, watch.ToWatchAsync()), cancellationToken);
+
     public static Task<Result> GetDataAsync(
         this IZooKeeper zooKeeper,
         ZooKeeperPath path,

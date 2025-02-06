@@ -6,5 +6,5 @@ public interface IZooKeeperOperation<TResult>
 {
     public void WriteRequest(in ZooKeeperContext context);
 
-    public TResult ReadResponse(in ZooKeeperResponse response);
+    public TResult ReadResponse(in ZooKeeperResponse response, IZooKeeperWatcher? watcher);
 }

@@ -40,7 +40,7 @@ public sealed record DeleteOperation
         writer.Advance(size);
     }
 
-    public Result ReadResponse(in ZooKeeperResponse response)
+    public Result ReadResponse(in ZooKeeperResponse response, IZooKeeperWatcher? watcher)
     {
         if (response.Error == ZooKeeperError.NoNode)
             return new(false);

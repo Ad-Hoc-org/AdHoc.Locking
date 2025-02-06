@@ -27,7 +27,7 @@ public sealed record PingOperation
     public void WriteRequest(in ZooKeeperContext context) =>
         context.Writer.Write(_Header.Span);
 
-    public ZooKeeperError ReadResponse(in ZooKeeperResponse response) =>
+    public ZooKeeperError ReadResponse(in ZooKeeperResponse response, IZooKeeperWatcher? watcher) =>
         response.Error;
 
 }
