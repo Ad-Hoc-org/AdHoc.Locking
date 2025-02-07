@@ -43,11 +43,14 @@ public sealed record DeleteOperation
     public Result ReadResponse(in ZooKeeperResponse response, IZooKeeperWatcher? watcher)
     {
         if (response.Status == ZooKeeperStatus.NoNode)
-            return new(response.Transaction, false);
+            return new(response.Transaction, false, false);
+
+        if (response.Status == ZooKeeperStatus.NotEmpty)
+            return new(response.Transaction, true, false);
 
         response.ThrowIfError();
 
-        return new(response.Transaction, true);
+        return new(response.Transaction, true, true);
     }
 
 
@@ -57,6 +60,7 @@ public sealed record DeleteOperation
 
     public readonly record struct Result(
         long Transaction,
+        bool Existed,
         bool Deleted
     );
 }

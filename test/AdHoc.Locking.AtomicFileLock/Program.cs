@@ -35,9 +35,15 @@ CancellationToken cancellationToken = default;
 
 await using var client = new ZooKeeperClient("localhost", 2181);
 
-Console.WriteLine(await client.ExistsAsync("foo", LogEvents, cancellationToken));
+//Console.WriteLine(await client.ExistsAsync("foo", LogEvents, cancellationToken));
+Console.WriteLine(await client.GetChildrenAsync("foo", LogEvents, cancellationToken));
+
 Console.WriteLine(await client.CreateAsync("foo", "bar"u8.ToArray(), cancellationToken));
 Console.WriteLine(await client.CreateAsync("foo", cancellationToken));
+
+Console.WriteLine(await client.GetChildrenAsync("foo", LogEvents, cancellationToken));
+Console.WriteLine(await client.CreateAsync("foo/bar", cancellationToken));
+Console.WriteLine(await client.GetChildrenAsync("foo", LogEvents, cancellationToken));
 
 Console.WriteLine(await client.GetDataAsync("foo", LogEvents, cancellationToken));
 Console.WriteLine(await client.SetDataAsync("foo", "data"u8.ToArray(), cancellationToken));
@@ -47,6 +53,8 @@ Console.WriteLine(await client.CreateEphemeralAsync("ephemeral", cancellationTok
 Console.WriteLine(await client.ExistsAsync("empty", cancellationToken));
 Console.WriteLine(await client.GetDataAsync("empty", cancellationToken));
 
+Console.WriteLine(await client.DeleteAsync("foo", cancellationToken));
+Console.WriteLine(await client.DeleteAsync("foo/bar", cancellationToken));
 Console.WriteLine(await client.DeleteAsync("foo", cancellationToken));
 Console.WriteLine(await client.SetDataAsync("foo", "data"u8.ToArray(), cancellationToken));
 Console.WriteLine(await client.DeleteAsync("foo", cancellationToken));

@@ -53,7 +53,7 @@ public sealed record ExistsOperation
     public Result ReadResponse(in ZooKeeperResponse response, IZooKeeperWatcher? watcher)
     {
         if (response.Status == ZooKeeperStatus.NoNode)
-            return new(response.Transaction, default, default);
+            return new(response.Transaction, default, watcher);
 
         response.ThrowIfError();
 
