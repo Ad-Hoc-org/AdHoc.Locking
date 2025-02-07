@@ -20,6 +20,7 @@ public static partial class Operations
     public const int MinimalResponseLength = RequestSize + TransactionSize + StatusSize;
 
     public const int VersionSize = Int32Size;
+    public const int NoVersion = -1;
 
     public const int TimestampSize = Int64Size;
 

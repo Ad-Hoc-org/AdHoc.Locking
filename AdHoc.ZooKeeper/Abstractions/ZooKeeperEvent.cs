@@ -1,6 +1,7 @@
 // Copyright AdHoc Authors
 // SPDX-License-Identifier: MIT
 
+using static AdHoc.ZooKeeper.Abstractions.IZooKeeper;
 using static AdHoc.ZooKeeper.Abstractions.Operations;
 using static AdHoc.ZooKeeper.Abstractions.ZooKeeperEvent;
 
@@ -9,7 +10,7 @@ public readonly record struct ZooKeeperEvent(
     long Trigger,
     ZooKeeperStatus Status,
     Types Type,
-    IZooKeeperWatcher.Types Watcher,
+    States State,
     ZooKeeperPath Path
 )
 {
@@ -40,7 +41,7 @@ public readonly record struct ZooKeeperEvent(
             ReadInt64(source.Slice(RequestSize)),
             (ZooKeeperStatus)ReadInt32(source.Slice(RequestSize + TransactionSize)),
             (Types)ReadInt32(source.Slice(RequestSize + TransactionSize + Int32Size)),
-            (IZooKeeperWatcher.Types)ReadInt32(source.Slice(RequestSize + TransactionSize + Int32Size + Int32Size)),
+            (States)ReadInt32(source.Slice(RequestSize + TransactionSize + Int32Size + Int32Size)),
             path
         );
     }
